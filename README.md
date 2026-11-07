@@ -1,16 +1,20 @@
 # Blindcap
 
-Blindcap is a mobile-first blind bourbon tournament for 12 tasters and 12 bottles. Next.js 16 + React 19 on Vercel, with Supabase Auth, Postgres and a Supabase Edge Function.
+Blindcap is a mobile-first blind bourbon tournament for 2–16 tasters, each bringing one bottle. Next.js 16 + React 19 on Vercel, with Supabase Auth, Postgres and a Supabase Edge Function.
 
 ## Agreed scoring
 
-- Four opening groups of three; two advance per group.
-- Two semifinals of four; two advance per group.
-- One final of four. All 12 tasters judge every flight, including their own anonymous bottle.
+- Choose the event’s taster count (2–16) up front; one bottle per taster. The preview shows the tournament before creation and before the draw.
+- 2–4: final only (including a two-bottle head-to-head).
+- 5: one opening group of five, top four to the final.
+- 6–8: two balanced opening groups, top two each to the final.
+- 9–11: three balanced opening groups, top two each; two semifinals of three, top two each to the final.
+- 12–16: four balanced opening groups, top two each; two semifinals of four, top two each to the final.
+- Every registered taster judges every flight, including their own anonymous bottle. Every ballot is required to close a flight.
 - Each ballot: 80% forced preference ranking; 5% each aroma, flavor, smoothness and overall enjoyment.
 - Preference is linearly normalized from 100 for first to 0 for last. Integer attributes 1–10 map to 0–100. Twelve equally weighted ballots determine each round score.
 - Advancement uses current-round score. Ties break on preference, then enjoyment; a remaining cutoff tie requires a blind preference-only runoff. Repeat tied runoffs.
-- Finalists occupy places 1–4, weighted 20/30/50 across stages. Semifinal eliminations occupy 5–8, weighted 40/60. Opening eliminations occupy 9–12, opening score only.
+- Finalists rank ahead of semifinal eliminations, then opening eliminations. Weight each bottle’s completed stages proportionally: opening/semifinal/final 20/30/50 when all apply, opening/final 2/7 and 5/7 when semifinals are skipped, and 100% final for final-only events. Semifinal eliminations use 40/60; opening eliminations use opening scores only. Places run 1 through the actual bottle count.
 - Weighted preference, then weighted enjoyment break placement ties. Remaining ties share competition places except first and last, which use blind runoffs.
 - First earns the Yorktown Tumbler; last earns the Swill Award.
 - Scores retain full precision for decisions; display rounds to two decimals. Scores compare only within the same placement tier. Different group opponents remain a tournament limitation.

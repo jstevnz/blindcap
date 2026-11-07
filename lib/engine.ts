@@ -1,3 +1,4 @@
+import { tournamentPlan, validCount } from "./tournament.ts";
 import { randomInt, randomUUID } from "node:crypto";
 export type Stage = "opening" | "semifinal" | "final";
 export type Participant = { id: string; name: string; email: string };
@@ -28,6 +29,7 @@ export type Group = {
 export type Event = {
   id: string;
   title: string;
+  tasterCount?: number;
   ownerId: string;
   revision: number;
   phase: "setup" | "opening" | "semifinal" | "final" | "complete";
@@ -51,7 +53,15 @@ const eps = 1e-8;
 export function assert(ok: unknown, message: string): asserts ok {
   if (!ok) throw new Error(message);
 }
-export function createEvent(ownerId: string, title: string): Event {
+export function createEvent(
+  ownerId: string,
+  title: string,
+  tasterCount = 12,
+): Event {
+  assert(
+    validCount(tasterCount),
+    "Choose a whole number of tasters from 2 to 16.",
+  );
   assert(
     title.trim().length > 0 && title.length <= 100,
     "Enter an event name (up to 100 characters).",
@@ -59,6 +69,7 @@ export function createEvent(ownerId: string, title: string): Event {
   return {
     id: randomUUID(),
     title: title.trim(),
+    tasterCount,
     ownerId,
     revision: 0,
     phase: "setup",
@@ -153,7 +164,17 @@ function ensureRunoff(e: Event, key: string, ids: string[], stage: Stage) {
 function normalGroups(e: Event, stage: Stage) {
   return e.groups.filter((g) => g.stage === stage && !g.runoffKey);
 }
+export function eventSize(e: Event) {
+  return e.tasterCount ?? (e.participants.length || 12);
+}
+function placementTie(e: Event, a: string, b: string) {
+  return (
+    resolutionCompare(e, "award:top", a, b) ||
+    resolutionCompare(e, "award:bottom", a, b)
+  );
+}
 function advance(e: Event) {
+  const plan = tournamentPlan(eventSize(e));
   const stage = e.phase;
   assert(
     stage === "opening" || stage === "semifinal",
@@ -161,7 +182,8 @@ function advance(e: Event) {
   );
   const gs = normalGroups(e, stage);
   assert(
-    gs.length === (stage === "opening" ? 4 : 2) &&
+    gs.length ===
+      (stage === "opening" ? plan.opening.length : plan.semifinal.length) &&
       gs.every((g) => g.status === "closed"),
     "Close every group in this stage first.",
   );
@@ -174,19 +196,20 @@ function advance(e: Event) {
       key,
       g.bottleIds.map((id) => metrics(g, id)),
     );
+    const quota = stage === "opening" ? plan.openingQualifiers : 2;
     if (
-      compare(m[1], m[2]) === 0 &&
-      !resolutionCompare(e, key, m[1].bottleId, m[2].bottleId)
+      compare(m[quota - 1], m[quota]) === 0 &&
+      !resolutionCompare(e, key, m[quota - 1].bottleId, m[quota].bottleId)
     ) {
       const tied = m
-        .filter((x) => compare(x, m[1]) === 0)
+        .filter((x) => compare(x, m[quota - 1]) === 0)
         .map((x) => x.bottleId);
       ensureRunoff(e, key, tied, stage);
       pending = true;
-    } else winners.push(m.slice(0, 2).map((x) => x.bottleId));
+    } else winners.push(m.slice(0, quota).map((x) => x.bottleId));
   }
   if (pending) return;
-  if (stage === "opening") {
+  if (stage === "opening" && plan.semifinal.length) {
     // Each semifinal receives one qualifier from each opening group.
     const pairs = winners.map(shuffle);
     e.groups.push(
@@ -222,7 +245,7 @@ export function results(e: Event): Result[] {
           ? finals.has(b.id)
           : tier === "semifinal"
             ? semis.has(b.id) && !finals.has(b.id)
-            : !semis.has(b.id),
+            : !semis.has(b.id) && !finals.has(b.id),
       )
       .map((b) => b.id);
     const ms = ids
@@ -234,12 +257,17 @@ export function results(e: Event): Result[] {
           );
           if (g) stageMetrics[s] = metrics(g, id);
         }
-        const weights =
-          tier === "final"
-            ? { opening: 0.2, semifinal: 0.3, final: 0.5 }
-            : tier === "semifinal"
-              ? { opening: 0.4, semifinal: 0.6, final: 0 }
-              : { opening: 1, semifinal: 0, final: 0 };
+        const rawWeights = { opening: 0.2, semifinal: 0.3, final: 0.5 };
+        const denominator = tiers.reduce(
+          (sum, t) => sum + (stageMetrics[t] ? rawWeights[t] : 0),
+          0,
+        );
+        const weights = Object.fromEntries(
+          tiers.map((t) => [
+            t,
+            stageMetrics[t] ? rawWeights[t] / denominator : 0,
+          ]),
+        ) as Record<Stage, number>;
         const sum = (k: "score" | "preference" | "enjoyment") =>
           tiers.reduce(
             (s, t) => s + (stageMetrics[t]?.[k] ?? 0) * weights[t],
@@ -256,27 +284,13 @@ export function results(e: Event): Result[] {
           ),
         };
       })
-      .sort(
-        (a, b) =>
-          compare(a, b) ||
-          resolutionCompare(
-            e,
-            tier === "final" ? "award:top" : "award:bottom",
-            a.bottleId,
-            b.bottleId,
-          ),
-      );
+      .sort((a, b) => compare(a, b) || placementTie(e, a.bottleId, b.bottleId));
     let place = offset + 1;
     ms.forEach((m, i) => {
       if (
         i &&
         (compare(m, ms[i - 1]) !== 0 ||
-          resolutionCompare(
-            e,
-            tier === "final" ? "award:top" : "award:bottom",
-            m.bottleId,
-            ms[i - 1].bottleId,
-          ) !== 0)
+          placementTie(e, m.bottleId, ms[i - 1].bottleId) !== 0)
       )
         place = offset + i + 1;
       out.push({ ...m, place });
@@ -293,18 +307,30 @@ function finish(e: Event) {
   );
   const r = results(e);
   let pending = false;
-  for (const [key, index, tier] of [
-    ["award:top", 0, "final"],
-    ["award:bottom", 11, "opening"],
+  for (const [key, index] of [
+    ["award:top", 0],
+    ["award:bottom", r.length - 1],
   ] as const) {
-    const tied = r.filter((x) => x.tier === tier && compare(x, r[index]) === 0);
-    if (tied.length > 1 && !e.resolutions[key]) {
-      ensureRunoff(
-        e,
-        key,
-        tied.map((x) => x.bottleId),
-        tier,
-      );
+    const target = r[index];
+    const tied = r.filter(
+      (x) => x.tier === target.tier && compare(x, target) === 0,
+    );
+    if (
+      tied.length > 1 &&
+      !placementTie(e, tied[0].bottleId, tied[1].bottleId)
+    ) {
+      const ids = tied.map((x) => x.bottleId);
+      // A head-to-head tie needs one runoff to settle both awards.
+      if (
+        !e.groups.some(
+          (g) =>
+            g.runoffKey &&
+            g.status !== "closed" &&
+            g.bottleIds.length === ids.length &&
+            ids.every((id) => g.bottleIds.includes(id)),
+        )
+      )
+        ensureRunoff(e, key, ids, target.tier);
       pending = true;
     }
   }
@@ -315,6 +341,8 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
   assert(authorized(original, actor), "You are not invited to this event.");
   const e = structuredClone(original);
   const admin = e.ownerId === actor.id;
+  const count = eventSize(e);
+  e.tasterCount = count;
   if (c.type === "ballot") {
     const p = member(e, actor);
     assert(p, "Only registered tasters can submit a ballot.");
@@ -367,8 +395,8 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
           "Participants and bottles are required.",
         );
         assert(
-          c.participants.length === 12 && c.bottles.length === 12,
-          "Enter exactly 12 tasters and 12 bottles.",
+          c.participants.length === count && c.bottles.length === count,
+          `Enter exactly ${count} tasters and ${count} bottles.`,
         );
         const ps = c.participants as { name: string; email: string }[];
         assert(
@@ -403,8 +431,8 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
               b.name.length <= 150 &&
               Number.isInteger(b.ownerIndex) &&
               b.ownerIndex >= 0 &&
-              b.ownerIndex < 12,
-          ) && new Set(bs.map((b) => b.ownerIndex)).size === 12,
+              b.ownerIndex < count,
+          ) && new Set(bs.map((b) => b.ownerIndex)).size === count,
           "Each taster must own exactly one named bottle.",
         );
         e.bottles = bs.map((b, i) => ({
@@ -417,14 +445,20 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
       }
       case "start": {
         assert(
-          e.phase === "setup" && e.bottles.length === 12,
-          "Save all 12 tasters and bottles first.",
+          e.phase === "setup" && e.bottles.length === count,
+          `Save all ${count} tasters and bottles first.`,
         );
-        const ids = shuffle(e.bottles.map((b) => b.id));
-        e.groups = Array.from({ length: 4 }, (_, i) =>
-          group("opening", i, ids.slice(i * 3, i * 3 + 3)),
-        );
-        e.phase = "opening";
+        const plan = tournamentPlan(count),
+          ids = shuffle(e.bottles.map((b) => b.id));
+        let offset = 0;
+        e.groups = plan.opening.length
+          ? plan.opening.map((size, i) => {
+              const g = group("opening", i, ids.slice(offset, offset + size));
+              offset += size;
+              return g;
+            })
+          : [group("final", 0, ids)];
+        e.phase = plan.opening.length ? "opening" : "final";
         break;
       }
       case "open": {
@@ -448,9 +482,9 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
         const g = e.groups.find((g) => g.id === c.groupId);
         assert(g?.status === "open", "This group is not open.");
         assert(
-          g.ballots.length === 12 &&
-            new Set(g.ballots.map((b) => b.participantId)).size === 12,
-          "All 12 tasters must submit before closing.",
+          g.ballots.length === count &&
+            new Set(g.ballots.map((b) => b.participantId)).size === count,
+          `All ${count} tasters must submit before closing.`,
         );
         g.status = "closed";
         if (g.runoffKey) {
@@ -496,6 +530,8 @@ export function snapshot(e: Event, a: Actor) {
   return {
     id: e.id,
     title: e.title,
+    tasterCount: eventSize(e),
+    plan: tournamentPlan(eventSize(e)),
     revision: e.revision,
     phase: e.phase,
     revealed: e.revealed,

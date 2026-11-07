@@ -3,7 +3,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Blindcap",
   description:
-    "Twelve bottles. One Yorktown Tumbler. A blind tasting among friends.",
+    "Two to sixteen bottles. One Yorktown Tumbler. A blind tasting among friends.",
   robots: { index: false, follow: false },
 };
 export default function Layout({ children }: { children: React.ReactNode }) {

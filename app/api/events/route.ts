@@ -11,7 +11,11 @@ export async function POST(req: Request) {
   try {
     checkOrigin(req);
     const data = await body(req);
-    return await backend({ action: "create", title: data.title });
+    return await backend({
+      action: "create",
+      title: data.title,
+      tasterCount: data.tasterCount,
+    });
   } catch (e) {
     return failure(e);
   }

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { tournamentPlan } from "@/lib/tournament";
 import { browser, configured, request } from "@/lib/browser";
 export default function Home() {
   const [email, setEmail] = useState(""),
@@ -10,6 +11,7 @@ export default function Home() {
       { id: string; title: string; phase: string; admin: boolean }[]
     >([]),
     [title, setTitle] = useState("Yorktown Bourbon Night"),
+    [count, setCount] = useState(12),
     [error, setError] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
@@ -42,7 +44,7 @@ export default function Home() {
       <section className="hero">
         <p className="eyebrow">THE YORKTOWN TRADITION</p>
         <h1>
-          Twelve bottles.
+          Your bottles.
           <br />
           One <em>Tumbler.</em>
         </h1>
@@ -52,8 +54,8 @@ export default function Home() {
           Let your palate pick the winner.
         </p>
         <div className="hero-rule">
-          <span>12 TASTERS</span>
-          <span>3 STAGES</span>
+          <span>2–16 TASTERS</span>
+          <span>ONE CHAMPION</span>
           <span>100% BLIND</span>
         </div>
       </section>
@@ -101,7 +103,10 @@ export default function Home() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   act(async () => {
-                    const event = await request("/api/events", { title });
+                    const event = await request("/api/events", {
+                      title,
+                      tasterCount: count,
+                    });
                     location.href = `/event/${event.id}`;
                   });
                 }}
@@ -115,6 +120,24 @@ export default function Home() {
                     required
                   />
                 </label>
+                <label>
+                  Number of tasters
+                  <select
+                    value={count}
+                    onChange={(ev) => setCount(Number(ev.target.value))}
+                  >
+                    {Array.from({ length: 15 }, (_, i) => (
+                      <option key={i + 2} value={i + 2}>
+                        {i + 2} tasters · {i + 2} bottles
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="fine">
+                  {count <= 4
+                    ? `One final of ${count}${count === 2 ? " · Head-to-head" : ""}`
+                    : `Opening: ${tournamentPlan(count).opening.join(" + ")}${tournamentPlan(count).semifinal.length ? ` → Semifinals: ${tournamentPlan(count).semifinal.join(" + ")}` : ""} → Final four`}
+                </p>
                 <button disabled={busy}>
                   Create an event <span>↗</span>
                 </button>
@@ -225,7 +248,7 @@ export default function Home() {
         <div>
           <span>01 / THE DRAW</span>
           <h3>Meet your mystery pours.</h3>
-          <p>Four opening flights. Three anonymous bottles in each.</p>
+          <p>Your event’s draw adapts to the number of bottles.</p>
         </div>
         <div>
           <span>02 / THE TASTE</span>

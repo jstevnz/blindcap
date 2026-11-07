@@ -3,8 +3,8 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import type { Snapshot, Entry, Command } from "@/lib/engine";
 import { request } from "@/lib/browser";
 type Row = { name: string; email: string; bottle: string };
-const blank = (): Row[] =>
-  Array.from({ length: 12 }, () => ({ name: "", email: "", bottle: "" }));
+const blank = (count = 12): Row[] =>
+  Array.from({ length: count }, () => ({ name: "", email: "", bottle: "" }));
 export default function EventPage({
   params,
 }: {
@@ -16,7 +16,7 @@ export default function EventPage({
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [tab, setTab] = useState("taste"),
-    [rows, setRows] = useState<Row[]>(blank),
+    [rows, setRows] = useState<Row[]>(() => blank()),
     [confirm, setConfirm] = useState<Command | null>(null),
     [inviteLinks, setInviteLinks] = useState<Record<string, string>>({});
   const initialized = useRef(false);
@@ -25,6 +25,7 @@ export default function EventPage({
     setEvent((prev) => (!prev || data.revision >= prev.revision ? data : prev));
     if (!initialized.current && data.admin) {
       initialized.current = true;
+      if (!data.participants.length) setRows(blank(data.tasterCount));
       if (data.participants.length)
         setRows(
           data.participants.map((p, i) => ({
@@ -106,7 +107,12 @@ export default function EventPage({
             {e.admin ? "THE HOST’S TABLE" : "YOUR SEAT AT THE TABLE"}
           </p>
           <h1>{e.title}</h1>
-          {e.participantId&&<p className="muted">Tasting as {e.participants.find(p=>p.id===e.participantId)?.name}</p>}
+          {e.participantId && (
+            <p className="muted">
+              Tasting as{" "}
+              {e.participants.find((p) => p.id === e.participantId)?.name}
+            </p>
+          )}
         </div>
         <span className="pill">
           {e.revealed
@@ -164,12 +170,12 @@ export default function EventPage({
             {current && (
               <>
                 <progress
-                  max={12}
+                  max={e.tasterCount}
                   value={current.submitted}
-                  aria-label={`${current.submitted} of 12 tasters submitted`}
+                  aria-label={`${current.submitted} of ${e.tasterCount} tasters submitted`}
                 />
                 <p className="fine">
-                  {current.submitted} OF 12 TASTERS SUBMITTED
+                  {current.submitted} OF {e.tasterCount} TASTERS SUBMITTED
                 </p>
               </>
             )}
@@ -187,13 +193,25 @@ export default function EventPage({
           ) : current ? (
             <p className="panel">
               You’re hosting this event. To taste, add your signed-in email
-              among the 12 participants before the draw.
+              among the {e.tasterCount} participants before the draw.
             </p>
           ) : null}
           <section className="panel">
             <p className="eyebrow">THE ROAD TO THE TUMBLER</p>
+            <p className="fine">
+              {e.plan.opening.length
+                ? `Opening ${(e.plan.weights.opening * 100).toFixed(2)}% · `
+                : ""}
+              {e.plan.semifinal.length ? "Semifinal 30% · " : ""}Final{" "}
+              {(e.plan.weights.final * 100).toFixed(2)}%. Preference contributes
+              80% of each round.
+            </p>
             <div className="stage-strip">
-              {["opening", "semifinal", "final"].map((s, i) => (
+              {[
+                ...(e.plan.opening.length ? ["opening"] : []),
+                ...(e.plan.semifinal.length ? ["semifinal"] : []),
+                "final",
+              ].map((s, i) => (
                 <div key={s} className={e.phase === s ? "selected" : ""}>
                   <span>0{i + 1}</span>
                   <h3>
@@ -201,13 +219,15 @@ export default function EventPage({
                       ? "Opening flights"
                       : s === "semifinal"
                         ? "Semifinals"
-                        : "Final four"}
+                        : e.plan.final === 2
+                          ? "Head-to-head"
+                          : `Final ${e.plan.final}`}
                   </h3>
                   <p>
                     {s === "opening"
-                      ? "12 bottles → 8"
+                      ? `${e.tasterCount} bottles → ${e.plan.opening.length * e.plan.openingQualifiers}`
                       : s === "semifinal"
-                        ? "8 bottles → 4"
+                        ? `${e.plan.semifinal.reduce((a, b) => a + b, 0)} bottles → 4`
                         : "One champion"}
                   </p>
                 </div>
@@ -222,9 +242,24 @@ export default function EventPage({
           {e.phase === "setup" ? (
             <section className="panel">
               <p className="eyebrow">BEFORE THE FIRST POUR</p>
-              <h2>Set the table for twelve.</h2>
+              <h2>Set the table for {e.tasterCount}.</h2>
+              <p className="notice">
+                {e.plan.opening.length
+                  ? `Opening groups: ${e.plan.opening.join(" + ")} → `
+                  : ""}
+                {e.plan.semifinal.length
+                  ? `Semifinals: ${e.plan.semifinal.join(" + ")} → `
+                  : ""}
+                {e.plan.final === 2
+                  ? "Head-to-head final"
+                  : `Final of ${e.plan.final}`}
+                .
+              </p>
               <p>
-                Each row pairs a taster with the bottle they brought. Guest emails are optional. If you are tasting, enter your signed-in host email on your own row. Bottle numbers follow row order; wrap and label each bottle before tasting.
+                Each row pairs a taster with the bottle they brought. Guest
+                emails are optional. If you are tasting, enter your signed-in
+                host email on your own row. Bottle numbers follow row order;
+                wrap and label each bottle before tasting.
               </p>
               <form
                 onSubmit={(ev) => {
@@ -275,13 +310,13 @@ export default function EventPage({
                 </div>
                 <button disabled={busy}>Save participants & bottles</button>
               </form>
-              {e.bottles.length === 12 && (
+              {e.bottles.length === e.tasterCount && (
                 <button
                   className="secondary"
                   disabled={busy}
                   onClick={() => setConfirm({ type: "start" })}
                 >
-                  Lock setup & draw opening groups →
+                  Lock setup & draw tournament →
                 </button>
               )}
             </section>
@@ -295,7 +330,8 @@ export default function EventPage({
                     : "One flight at a time."}
                 </h2>
                 <p>
-                  Participants refresh automatically. Close a group after all 12
+                  Participants refresh automatically. Close a group after all{" "}
+                  {e.tasterCount}
                   ballots arrive, then open the next. Scores below are visible
                   only to you.
                 </p>
@@ -337,11 +373,13 @@ export default function EventPage({
                   </div>
                   <p>{g.bottleIds.map(label).join(" · ")}</p>
                   <progress
-                    max={12}
+                    max={e.tasterCount}
                     value={g.submitted}
-                    aria-label={`${g.submitted} of 12 submitted`}
+                    aria-label={`${g.submitted} of ${e.tasterCount} submitted`}
                   />
-                  <p>{g.submitted}/12 submitted</p>
+                  <p>
+                    {g.submitted}/{e.tasterCount} submitted
+                  </p>
                   <div className="participant-chips">
                     {e.participants.map((p) => (
                       <span
@@ -363,7 +401,7 @@ export default function EventPage({
                   )}
                   {g.status === "open" && (
                     <button
-                      disabled={busy || g.submitted < 12}
+                      disabled={busy || g.submitted < e.tasterCount}
                       onClick={() =>
                         setConfirm({ type: "close", groupId: g.id })
                       }
@@ -650,10 +688,10 @@ export default function EventPage({
             </h2>
             <p>
               {confirm.type === "start"
-                ? "Participant emails, bottle ownership and opening groups will be locked. Check setup before continuing."
+                ? "Taster count, participant emails, bottle ownership and the tournament draw will be locked. Check setup before continuing."
                 : confirm.type === "reveal"
                   ? "Every taster will be able to see bottle identities, owners, standings and awards. This reveal is permanent."
-                  : "All 12 ballots are in. Closing prevents further edits to this flight."}
+                  : `All ${e.tasterCount} ballots are in. Closing prevents further edits to this flight.`}
             </p>
             <div className="actions">
               <button disabled={busy} onClick={() => send(confirm)}>

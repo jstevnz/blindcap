@@ -4,52 +4,111 @@ export default function Rules() {
       <p className="eyebrow">THE HOUSE RULES</p>
       <h1>A fair pour.</h1>
       <section className="panel">
-        <h2>The tournament</h2>
+        <h2>Your event, your field</h2>
         <p>
-          All 12 tasters judge every group, including their own anonymous
-          bottle. Four opening groups of three send their top two to two
-          semifinals of four. Each semifinal sends two to the final four.
+          Choose 2–16 tasters when creating an event. Everyone brings one bottle
+          and judges every flight, including their own anonymous bottle. The
+          count locks when the event is created; the host previews the format
+          before making the draw.
+        </p>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Tasters</th>
+                <th>Opening</th>
+                <th>Semifinals</th>
+                <th>Final</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2–4</td>
+                <td>None</td>
+                <td>None</td>
+                <td>All bottles</td>
+              </tr>
+              <tr>
+                <td>5</td>
+                <td>One group of 5; top 4 advance</td>
+                <td>None</td>
+                <td>4</td>
+              </tr>
+              <tr>
+                <td>6–8</td>
+                <td>Two balanced groups; top 2 each</td>
+                <td>None</td>
+                <td>4</td>
+              </tr>
+              <tr>
+                <td>9–11</td>
+                <td>Three balanced groups; top 2 each</td>
+                <td>Two groups of 3; top 2 each</td>
+                <td>4</td>
+              </tr>
+              <tr>
+                <td>12–16</td>
+                <td>Four balanced groups; top 2 each</td>
+                <td>Two groups of 4; top 2 each</td>
+                <td>4</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Groups differ in size by at most one bottle and are assigned randomly.
+          Each semifinal receives one qualifier from each opening group. Larger
+          opening groups make qualification harder; normalization cannot remove
+          differences in opponents.
         </p>
         <h2>Your ballot</h2>
         <p>
-          Rank every bottle from favorite to least favorite with no ties.
-          Preference contributes 80% of a round score. Aroma, flavor, smoothness
-          and overall enjoyment each contribute 5%.
+          Give every bottle a unique preference rank, favorite first. Preference
+          contributes 80% of the round score. Aroma, flavor, smoothness and
+          overall enjoyment each contribute 5%. Attributes use whole numbers
+          from 1 (lowest) to 10 (highest), mapped linearly to 0–100.
         </p>
         <p>
-          Attributes use whole numbers from 1 (lowest) to 10 (highest), mapped
-          linearly to 0–100. Preference maps to 100/50/0 in groups of three and
-          100/66⅔/33⅓/0 in groups of four. All 12 ballots have equal weight. You
-          can edit until the host closes the group.
+          Preference maps linearly from 100 for first to 0 for last: 100/0 for
+          head-to-head, 100/50/0 for three bottles, 100/66⅔/33⅓/0 for four, and
+          100/75/50/25/0 for five. Every registered taster’s ballot has equal
+          weight. Revise until the host closes the flight; all tasters must
+          submit before closing.
         </p>
         <h2>Moving on</h2>
         <p>
-          The current group’s score decides advancement. Ties break by
-          preference score, then overall enjoyment. A remaining tie at the
-          advancement cutoff triggers a blind runoff. Runoffs use preference
-          ranking only; if tied again, repeat.
+          Current-round scores decide advancement. Ties break by preference
+          score, then overall enjoyment. An unresolved tie at the qualification
+          cutoff requires a blind preference-only runoff. Repeat if still tied.
         </p>
-        <h2>Places 1–12</h2>
+        <h2>Final placement</h2>
         <p>
-          Finalists take places 1–4 using 20% opening, 30% semifinal and 50%
-          final. Semifinal eliminations take 5–8 using 40% opening and 60%
-          semifinal. Opening eliminations take 9–12 using opening scores.
-          Missing stages never count as zero.
+          Finalists rank first, followed by semifinal eliminations, then opening
+          eliminations. Within each tier, use weighted scores from the stages
+          those bottles actually tasted. Missing rounds never receive artificial
+          zeros.
         </p>
         <p>
-          Within each tier, tied scores break by weighted preference and
-          weighted enjoyment. Unresolved ties share a place, except the winner
-          and last place, which require a blind runoff. Opponents differ across
-          groups, so placement reflects the tournament path.
+          Three-stage finalists use 20% opening, 30% semifinal and 50% final.
+          Without semifinals, finalists use 2/7 opening (28.57%) and 5/7 final
+          (71.43%). Final-only events use 100% final. Semifinal eliminations use
+          40% opening and 60% semifinal; opening eliminations use opening scores
+          only. Full precision decides results; displayed scores are rounded.
+        </p>
+        <p>
+          Weighted preference, then weighted enjoyment break placement ties.
+          Remaining ties share a place, except first and last, which require
+          blind runoffs. In a fully tied head-to-head, one runoff settles both
+          awards.
         </p>
         <h2>The reveal</h2>
         <p>
-          The host controls when identities, owners, results and awards are
-          revealed. First place earns the Yorktown Tumbler. Last place earns the
-          Swill Award. Your own ballots remain private.
+          Your host controls the reveal of bottle identities, owners, standings
+          and awards. First earns the Yorktown Tumbler; last earns the Swill
+          Award. Your individual ballots remain private.
         </p>
       </section>
-      <a href="/">← Back to the tasting room</a>
+      <a href="/">← Back to Blindcap</a>
     </main>
   );
 }
