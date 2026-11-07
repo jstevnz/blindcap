@@ -60,6 +60,6 @@ See [Host guide](docs/HOST-GUIDE.md). No actual participant names, bottle identi
 
 ## Invitation email delivery
 
-Save `RESEND_API_KEY` directly in Vercel as a Production Secret, scoped to sending from the verified `mail.blindcap.net` domain. Never expose it under a public variable or copy it into source. The browser submits only the seat and existing token; the backend checks host ownership, the current invitation digest, expiration and redemption status, then returns the saved delivery address to the server. User-supplied recipient overrides and arbitrary links are not accepted.
+Save `RESEND_API_KEY` directly in Vercel as a Production Secret, scoped to sending from the verified `blindcap.net` domain. Never expose it under a public variable or copy it into source. The browser submits only the seat and existing token; the backend checks host ownership, the current invitation digest, expiration and redemption status, then returns the saved delivery address to the server. User-supplied recipient overrides and arbitrary links are not accepted.
 
 Resend requests use deterministic idempotency keys to protect retries for 24 hours. Transport failures preserve the existing invitation so the same request can be retried. Tests mock the provider and do not email real guests. Verify inbox delivery with a host-controlled test seat before sending event invitations.

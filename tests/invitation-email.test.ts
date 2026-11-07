@@ -18,7 +18,7 @@ const token = "a".repeat(64);
 test("email uses the saved recipient, verified sender and canonical private link", () => {
   const m = invitationMessage(details, token);
   assert.deepEqual(m.payload.to, [details.email]);
-  assert.equal(m.payload.from, "Blindcap <invitations@mail.blindcap.net>");
+  assert.equal(m.payload.from, "Blindcap <invitations@blindcap.net>");
   assert.ok(
     m.payload.text.includes(`https://blindcap.net/join#invite=${token}`),
   );

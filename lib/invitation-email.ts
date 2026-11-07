@@ -13,6 +13,7 @@ export function invitationMessage(details: InvitationDetails, token: string) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email))
     throw new Error("Save a valid email address for this taster first.");
   const link = `https://blindcap.net/join#invite=${token}`;
+  const sender = "Blindcap <invitations@blindcap.net>";
   return {
     idempotencyKey:
       "blindcap-invite/" +
@@ -23,11 +24,12 @@ export function invitationMessage(details: InvitationDetails, token: string) {
             details.participantId,
             token,
             details.email,
+            sender,
           ]),
         )
         .digest("hex"),
     payload: {
-      from: "Blindcap <invitations@mail.blindcap.net>",
+      from: sender,
       to: [details.email],
       subject: `Your Blindcap invitation: ${details.eventTitle.replace(/[\r\n]/g, " ")}`,
       text: `Hi ${details.name},\n\nYou’re invited to ${details.eventTitle} on Blindcap.\n\nOpen your private invitation on the device you’ll use for tasting, then select “Join the tasting”:\n${link}\n\nThis link works once and expires at ${new Date(details.expiresAt).toUTCString()}. Keep it private—it signs you into your assigned seat.\n\nIf you need a replacement, contact your event host.\n\nBlindcap\nTrust your taste.`,
