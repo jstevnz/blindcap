@@ -873,7 +873,7 @@ function Ballot({
           ? "Rank these tied pours. This runoff uses preference only."
           : "Rate each pour from 1–10, then give every bottle a unique preference rank."}
       </p>
-      {entries.map((x) => (
+      {[...entries].sort((a, b) => bottleNumber(a.bottleId) - bottleNumber(b.bottleId)).map((x) => (
         <fieldset className="bottle-card" key={x.bottleId}>
           <legend>
             <span className="bottle-number">
