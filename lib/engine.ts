@@ -1,7 +1,12 @@
 import { tournamentPlan, validCount } from "./tournament.ts";
 import { randomInt, randomUUID } from "node:crypto";
 export type Stage = "opening" | "semifinal" | "final";
-export type Participant = { id: string; name: string; email: string };
+export type Participant = {
+  id: string;
+  name: string;
+  email: string;
+  invitationEmail?: string;
+};
 export type Bottle = {
   id: string;
   number: number;
@@ -441,6 +446,20 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
           name: b.name.trim(),
           ownerId: e.participants[b.ownerIndex].id,
         }));
+        break;
+      }
+      case "delivery-email": {
+        const participant = e.participants.find(
+          (p) => p.id === c.participantId,
+        );
+        assert(participant, "Select a registered taster.");
+        assert(
+          typeof c.email === "string" &&
+            c.email.length <= 254 &&
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email.trim()),
+          "Enter a valid invitation email address.",
+        );
+        participant.invitationEmail = c.email.trim().toLowerCase();
         break;
       }
       case "start": {

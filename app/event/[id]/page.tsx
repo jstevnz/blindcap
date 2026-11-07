@@ -19,7 +19,9 @@ export default function EventPage({
     [tab, setTab] = useState("taste"),
     [rows, setRows] = useState<Row[]>(() => blank()),
     [confirm, setConfirm] = useState<Command | null>(null),
-    [inviteLinks, setInviteLinks] = useState<Record<string, string>>({});
+    [inviteLinks, setInviteLinks] = useState<Record<string, string>>({}),
+    [deliveryEmails, setDeliveryEmails] = useState<Record<string, string>>({}),
+    [emailed, setEmailed] = useState<Record<string, string>>({});
   const initialized = useRef(false);
   const load = useCallback(async () => {
     const data: Snapshot = await request(`/api/events/${id}`);
@@ -457,6 +459,40 @@ export default function EventPage({
               e.participants.map((p) => (
                 <div className="invite-row" key={p.id}>
                   <strong>{p.name}</strong>
+                  <label>
+                    Invitation email
+                    <input
+                      type="email"
+                      maxLength={254}
+                      value={
+                        deliveryEmails[p.id] ??
+                        ("invitationEmail" in p
+                          ? String(p.invitationEmail)
+                          : "email" in p
+                            ? String(p.email)
+                            : "")
+                      }
+                      onChange={(ev) =>
+                        setDeliveryEmails((values) => ({
+                          ...values,
+                          [p.id]: ev.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                  <button
+                    className="secondary"
+                    disabled={busy || !deliveryEmails[p.id]?.trim()}
+                    onClick={() =>
+                      send({
+                        type: "delivery-email",
+                        participantId: p.id,
+                        email: deliveryEmails[p.id],
+                      })
+                    }
+                  >
+                    Save email address
+                  </button>
                   <div className="actions">
                     <button
                       className="secondary"
@@ -503,6 +539,56 @@ export default function EventPage({
                         Copy link
                       </button>
                     )}
+                    {inviteLinks[p.id] && (
+                      <button
+                        disabled={
+                          busy ||
+                          !("invitationEmail" in p
+                            ? p.invitationEmail
+                            : "email" in p
+                              ? p.email
+                              : "") ||
+                          emailed[p.id] === inviteLinks[p.id] ||
+                          !!(
+                            deliveryEmails[p.id] !== undefined &&
+                            deliveryEmails[p.id].trim().toLowerCase() !==
+                              ("invitationEmail" in p
+                                ? p.invitationEmail
+                                : "email" in p
+                                  ? p.email
+                                  : "")
+                          )
+                        }
+                        onClick={async () => {
+                          setBusy(true);
+                          setError("");
+                          try {
+                            const token = new URL(inviteLinks[p.id]).hash.slice(
+                              "#invite=".length,
+                            );
+                            const result = await request(
+                              `/api/events/${id}/invitations/email`,
+                              { participantId: p.id, token },
+                            );
+                            setEmailed((sent) => ({
+                              ...sent,
+                              [p.id]: inviteLinks[p.id],
+                            }));
+                            setNotice(
+                              `Invitation accepted for sending to ${result.email}. Check Resend for delivery status.`,
+                            );
+                          } catch (x) {
+                            setError((x as Error).message);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      >
+                        {emailed[p.id] === inviteLinks[p.id]
+                          ? "Invitation emailed"
+                          : "Email invitation"}
+                      </button>
+                    )}
                   </div>
                   {inviteLinks[p.id] && (
                     <input
@@ -538,7 +624,7 @@ export default function EventPage({
                   reveal.
                 </p>
               )}
-              <Awards results={e.results} label={label}/>
+              <Awards results={e.results} label={label} />
               {myBottle && ownResult && (
                 <section className="panel">
                   <p className="eyebrow">YOUR BOTTLE’S NIGHT</p>

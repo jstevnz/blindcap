@@ -35,3 +35,11 @@
 - Run a rehearsal event well before the tasting. Use private guest links on actual devices; never use the actual night to discover access problems.
 - Keep the Supabase project active before the event; a free project may pause after inactivity. Verify it is running before guests arrive.
 - Allow time between stages to check submissions and prepare pours. Larger events can involve seven flights plus runoffs; plan small pours, food, water and safe transportation.
+
+## Emailing private invitations
+
+In Host controls → Private guest invitations, enter an Invitation email and save it. This is a delivery contact only; changing it does not change who owns the taster seat. Create a private link, then use Email invitation beside Copy link. The saved recipient must match the displayed address; save edits before sending.
+
+The app checks that the link belongs to that seat and has not been used, replaced or expired. Email sending uses `invitations@mail.blindcap.net`. “Invitation emailed” means Resend accepted the message; delivery, bounce and spam-folder outcomes are separate. Check Resend’s email logs if needed.
+
+Retries of the same invitation and recipient are protected against duplicate messages for 24 hours. To issue another invitation after a successful send or an expired/used link, create a replacement link and send it. A replacement invalidates the prior unused link.

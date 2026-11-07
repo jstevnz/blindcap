@@ -203,6 +203,49 @@ Deno.serve(async (req: Request) => {
       if (inviteError) throw new Error("Unable to issue this invitation.");
       return json({ token });
     }
+    if (input.action === "invite-details") {
+      if (event.ownerId !== a.id)
+        return json(
+          { error: "Only the event admin can email invitations." },
+          403,
+        );
+      const participant = event.participants.find(
+        (p) => p.id === input.participantId,
+      );
+      if (!participant) throw new Error("Select a registered taster.");
+      if (
+        typeof input.token !== "string" ||
+        !/^[a-f0-9]{64}$/.test(input.token)
+      )
+        throw new Error("Create a valid private invitation first.");
+      const digest = createHash("sha256").update(input.token).digest("hex");
+      const { data: invite, error: inviteError } = await db
+        .from("bourbon_invites")
+        .select("expires_at")
+        .eq("event_id", event.id)
+        .eq("participant_id", participant.id)
+        .eq("token_hash", digest)
+        .is("redeemed_at", null)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+      if (inviteError)
+        throw new Error("Unable to check this invitation. Please try again.");
+      if (!invite)
+        throw new Error(
+          "This link was used, replaced or expired. Create a new invitation before emailing it.",
+        );
+      const email = participant.invitationEmail ?? participant.email;
+      if (!email)
+        throw new Error("Save an email address for this taster first.");
+      return json({
+        eventId: event.id,
+        participantId: participant.id,
+        eventTitle: event.title,
+        name: participant.name,
+        email,
+        expiresAt: invite.expires_at,
+      });
+    }
     if (input.action !== "command") throw new Error("Unknown action.");
     const c = input.command;
     if (c?.revision !== event.revision)

@@ -28,3 +28,9 @@ The Vercel platform sign-in gate was removed with the owner’s explicit approva
 - Next.js production build, application type checks and Edge Function type checks passed.
 - The fixed twelfth-place assumption in the award display was removed; the Swill card uses the actual last result.
 - New event creation asks for taster count and previews the bracket. Existing events retain their stored count or their original twelve-seat format.
+
+## Invitation email update
+
+- 51 automated tests passed, including recipient validation, stable idempotency keys, server-only provider authentication, provider failure handling and delivery-contact privacy.
+- Delivery contact changes do not change participant authentication or expose addresses to guests.
+- Production build and application/Edge Function type checks passed. Provider calls were mocked; actual inbox delivery still needs an owner-controlled test invitation after the production secret is configured.
