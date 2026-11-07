@@ -19,3 +19,12 @@ Verified November 7, 2026.
 Host email delivery and the production email redirect must be tested with the owner’s actual Supabase organization email. This cannot be inferred from successful guest invitation tests. Supabase URL Configuration should use `https://blindcap-jstevnz.vercel.app` as Site URL and allow `https://blindcap-jstevnz.vercel.app/auth/callback`. Guests do not require email delivery.
 
 The Vercel platform sign-in gate was removed with the owner’s explicit approval. The app still enforces host/guest authentication and per-event authorization. Git deployments were created from exact GitHub commits; automatic push-triggered project linking has not been configured.
+
+## Variable-taster update
+
+- Added the approved 2–16 taster formats and proportional stage weights.
+- 45 automated tests passed: full tournaments for every count, legacy 12-seat compatibility, ballot thresholds, head-to-head tie runoffs, and rendered winner/Swill cards for all 15 supported field sizes.
+- Live Supabase tests passed for event creation at 2, 5 and 16 tasters, rejection of 1 taster, and a complete tied head-to-head final followed by one award runoff and reveal.
+- Next.js production build, application type checks and Edge Function type checks passed.
+- The fixed twelfth-place assumption in the award display was removed; the Swill card uses the actual last result.
+- New event creation asks for taster count and previews the bracket. Existing events retain their stored count or their original twelve-seat format.

@@ -1,6 +1,7 @@
 "use client";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import type { Snapshot, Entry, Command } from "@/lib/engine";
+import Awards from "@/app/components/Awards";
 import { request } from "@/lib/browser";
 type Row = { name: string; email: string; bottle: string };
 const blank = (count = 12): Row[] =>
@@ -537,20 +538,7 @@ export default function EventPage({
                   reveal.
                 </p>
               )}
-              <div className="award-grid">
-                <section className="award winner">
-                  <p className="eyebrow">THE YORKTOWN TUMBLER</p>
-                  <span className="award-mark">✦</span>
-                  <h2>{label(e.results[0].bottleId)}</h2>
-                  <p>First place · {e.results[0].score.toFixed(2)} points</p>
-                </section>
-                <section className="award swill">
-                  <p className="eyebrow">THE SWILL AWARD</p>
-                  <span className="award-mark">↘</span>
-                  <h2>{label(e.results[11].bottleId)}</h2>
-                  <p>A bottle to remember. For other reasons.</p>
-                </section>
-              </div>
+              <Awards results={e.results} label={label}/>
               {myBottle && ownResult && (
                 <section className="panel">
                   <p className="eyebrow">YOUR BOTTLE’S NIGHT</p>
