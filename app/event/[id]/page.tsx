@@ -106,6 +106,7 @@ export default function EventPage({
             {e.admin ? "THE HOST’S TABLE" : "YOUR SEAT AT THE TABLE"}
           </p>
           <h1>{e.title}</h1>
+          {e.participantId&&<p className="muted">Tasting as {e.participants.find(p=>p.id===e.participantId)?.name}</p>}
         </div>
         <span className="pill">
           {e.revealed
@@ -223,9 +224,7 @@ export default function EventPage({
               <p className="eyebrow">BEFORE THE FIRST POUR</p>
               <h2>Set the table for twelve.</h2>
               <p>
-                Each row pairs a taster with the bottle they brought. Use the
-                email they’ll sign in with. Bottle numbers follow row order;
-                wrap and label each bottle before tasting.
+                Each row pairs a taster with the bottle they brought. Guest emails are optional. If you are tasting, enter your signed-in host email on your own row. Bottle numbers follow row order; wrap and label each bottle before tasting.
               </p>
               <form
                 onSubmit={(ev) => {
