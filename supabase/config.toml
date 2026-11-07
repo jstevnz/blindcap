@@ -1,0 +1,6 @@
+project_id = "blindcap"
+
+[functions.bourbon-api]
+# The handler validates every bearer token through Supabase Auth.
+# The redeem action instead requires a valid, single-use private invitation.
+verify_jwt = false

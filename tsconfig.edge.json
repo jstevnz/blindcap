@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["esnext", "dom"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "moduleResolution": "bundler",
+    "module": "esnext",
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "npm:@supabase/supabase-js@2.119.0": [
+        "./node_modules/@supabase/supabase-js/dist/index.d.mts"
+      ]
+    },
+    "types": ["node"]
+  },
+  "include": ["types/edge.d.ts", "supabase/functions/**/*.ts"]
+}
