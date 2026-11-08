@@ -106,11 +106,15 @@ export default function CommunityDashboard({ owner }: { owner: boolean }) {
       {owner && (
         <section className="panel">
           <p className="eyebrow">COMMUNITY OWNER</p>
+          <p>
+            <a href="/members">Review pending signups →</a>
+          </p>
           <h2>Invite a new member</h2>
           <p>
-            Only you can enroll new community members. Every member can host
-            their own events. Invitations are private, email-bound and valid for
-            seven days.
+            New members can sign up at blindcap.net/register without an
+            invitation. You approve or delete their pending profiles. You can
+            also send a personal signup invitation below; new accounts still
+            require your approval.
           </p>
           <label>
             Email address

@@ -135,6 +135,11 @@ function fixture() {
     from: (table: string) => new Query(table),
     rpc: async (name: string, args: Row) => {
       calls.push({ name, value: args });
+      if (name === "pending_bourbon_members")
+        return {
+          data: tables.bourbon_profiles.filter((p) => p.status === "pending"),
+          error: null,
+        };
       if (name === "bourbon_activate_member") {
         const p = tables.bourbon_profiles.find((p) => p.id === args.p_user);
         if (p) p.status = "active";
@@ -476,4 +481,231 @@ test("username login resolves the saved email and delegates password checks to S
     if (oldDeno) Object.defineProperty(globalThis, "Deno", oldDeno);
     else Reflect.deleteProperty(globalThis, "Deno");
   }
+});
+
+const application = {
+  operation: "apply",
+  email: "applicant@example.com",
+  username: "new_applicant",
+  fullName: "Applicant Full Name",
+  displayName: "Applicant",
+  phone: "+1 (555) 123-4567",
+  location: "Yorktown, VA",
+  bio: "Rye fan",
+  password: "a sufficiently long password",
+};
+test("public signup needs no invitation, stays pending and notifies the stored owner email", async () => {
+  const f = fixture(),
+    sent: Row[] = [];
+  const previous = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    sent.push(JSON.parse(String(init?.body)));
+    return Response.json({ id: "mock-email" });
+  };
+  try {
+    const result = await communityAction(
+      {
+        ...application,
+        status: "active",
+        role: "owner",
+        approved_at: "2026-01-01",
+        adminEmail: "attacker@example.com",
+      },
+      f.db,
+      null,
+      req(true),
+    );
+    assert.ok("pendingApproval" in result && result.pendingApproval);
+    assert.ok("verificationSent" in result && result.verificationSent);
+    assert.equal(JSON.stringify(result).includes(verification), false);
+    const p = f.tables.bourbon_profiles.find((p) => p.id === "new-user")!;
+    assert.equal(p.status, "pending");
+    assert.equal(p.role, "member");
+    assert.equal(p.approved_at, undefined);
+    assert.equal(p.full_name, application.fullName);
+    assert.equal(p.phone, application.phone);
+    assert.equal(p.claim_guest_id, "proven-guest");
+    assert.ok(p.admin_notified_at);
+    assert.equal(sent.length, 2);
+    assert.ok(
+      sent.some(
+        (m) =>
+          JSON.stringify(m.to) === JSON.stringify([application.email]) &&
+          String(m.text).includes(verification),
+      ),
+    );
+    const notification = sent.find(
+      (m) => JSON.stringify(m.to) === JSON.stringify([owner.email]),
+    )!;
+    assert.ok(notification);
+    assert.ok(
+      String(notification.text).includes("https://blindcap.net/members"),
+    );
+    assert.equal(String(notification.text).includes(verification), false);
+    assert.equal(
+      sent.some((m) => JSON.stringify(m.to).includes("attacker@example.com")),
+      false,
+    );
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+test("public signup resends cannot reset passwords or profiles or duplicate administrator notifications", async () => {
+  const f = fixture(),
+    sent: Row[] = [];
+  const previous = globalThis.fetch;
+  globalThis.fetch = async (_url, init) => {
+    sent.push(JSON.parse(String(init?.body)));
+    return Response.json({ id: "mock-email" });
+  };
+  try {
+    await communityAction(application, f.db, null, req());
+    await communityAction(
+      {
+        ...application,
+        username: "changed_name",
+        fullName: "Changed",
+        password: "a different long password",
+      },
+      f.db,
+      null,
+      req(),
+    );
+    assert.equal(f.calls.filter((c) => c.name === "createUser").length, 1);
+    assert.equal(f.calls.filter((c) => c.name === "updateUser").length, 0);
+    assert.equal(
+      f.tables.bourbon_profiles.find((p) => p.id === "new-user")?.full_name,
+      application.fullName,
+    );
+    assert.equal(
+      sent.filter((m) => JSON.stringify(m.to) === JSON.stringify([owner.email]))
+        .length,
+      1,
+    );
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+test("email failures leave a reviewable pending signup and a retryable notification", async () => {
+  const f = fixture(),
+    previous = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("Network failure");
+  };
+  try {
+    const result = await communityAction(application, f.db, null, req());
+    assert.ok("verificationSent" in result && !result.verificationSent);
+    assert.ok(
+      "adminNotificationPending" in result && result.adminNotificationPending,
+    );
+    assert.equal(
+      f.tables.bourbon_profiles.find((p) => p.id === "new-user")?.status,
+      "pending",
+    );
+    assert.equal(
+      f.tables.bourbon_profiles.find((p) => p.id === "new-user")
+        ?.admin_notified_at,
+      undefined,
+    );
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
+test("honeypot and request caps reject signup before creating an auth account", async () => {
+  for (const bot of [true, false]) {
+    const f = fixture();
+    if (!bot) f.limit();
+    await assert.rejects(
+      communityAction(
+        { ...application, website: bot ? "https://bot.example" : "" },
+        f.db,
+        null,
+        req(),
+      ),
+    );
+    assert.equal(
+      f.calls.some((c) => c.name === "createUser"),
+      false,
+    );
+  }
+});
+test("pending users can edit their own profile but cannot search, accept invitations or review members", async () => {
+  const f = fixture();
+  const p = f.tables.bourbon_profiles.find((p) => p.id === member.id)!;
+  p.status = "pending";
+  await communityAction(
+    {
+      operation: "profile",
+      username: "member",
+      displayName: "Updated",
+      fullName: "Private Name",
+      phone: "555-1234",
+      status: "active",
+      approved_at: "2026-01-01",
+      role: "owner",
+    },
+    f.db,
+    member,
+    req(),
+  );
+  assert.equal(p.status, "pending");
+  assert.equal(p.role, "member");
+  assert.equal(p.full_name, "Private Name");
+  assert.equal(p.approved_at, undefined);
+  for (const operation of [
+    "search",
+    "accept",
+    "pending-members",
+    "review-member",
+  ])
+    await assert.rejects(
+      communityAction(
+        { operation, query: "owner", decision: "approve" },
+        f.db,
+        member,
+        req(),
+      ),
+      /active private-community/,
+    );
+  assert.equal(
+    f.calls.some((c) => c.name === "bourbon_activate_member"),
+    false,
+  );
+});
+test("only the owner can review pending signups; deletion requires confirmation and verified actor IDs are used", async () => {
+  const f = fixture();
+  await assert.rejects(
+    communityAction({ operation: "pending-members" }, f.db, member, req()),
+    /Only the community owner/,
+  );
+  await assert.rejects(
+    communityAction(
+      { operation: "review-member", userId: member.id, decision: "delete" },
+      f.db,
+      owner,
+      req(),
+    ),
+    /Confirm/,
+  );
+  await communityAction(
+    {
+      operation: "review-member",
+      userId: member.id,
+      username: "member",
+      decision: "approve",
+      actorId: member.id,
+    },
+    f.db,
+    owner,
+    req(),
+  );
+  assert.deepEqual(
+    f.calls.find((c) => c.name === "review_bourbon_member")?.value,
+    {
+      p_actor: owner.id,
+      p_target: member.id,
+      p_decision: "approve",
+      p_username: "member",
+    },
+  );
 });

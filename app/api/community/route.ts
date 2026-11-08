@@ -8,6 +8,7 @@ export async function POST(req: Request) {
     const publicAction = [
       "invitation",
       "register",
+      "apply",
       "login",
       "recover",
       "email-login",
@@ -18,6 +19,10 @@ export async function POST(req: Request) {
         public: publicAction,
         email: [
           "register",
+          "apply",
+          "self",
+          "enroll",
+          "pending-members",
           "recover",
           "email-login",
           "community-invite",

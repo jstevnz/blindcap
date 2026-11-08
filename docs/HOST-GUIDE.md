@@ -3,7 +3,7 @@
 ## Before guests arrive
 
 1. Open the app and sign in with your community username/email and password, or an email sign-in link. Every community member can host an event. The original host can open **My profile & password** to choose a username and set a password without making another account.
-2. Choose the number of tasters (2–16), review the proposed format, and create an event. Open **Host controls**. The selected count is fixed for that event.
+2. Name a new event (the name starts blank), choose the number of tasters/bottles (2–16), review the proposed format, and create the event. Open **Host controls**. The selected count is fixed for that event.
 3. For each row, search and select an existing community profile, then enter the bourbon they brought. If you are tasting, select your own profile on your row. For an occasional guest without a community account, enter their name and optional email instead. One row means one taster and the bottle they own. Confirm attendance before locking the draw; the roster becomes permanent.
 4. Save. Physically wrap each bottle and label it with its row's bottle number (01 through the actual bottle count). Keep identities away from guests.
 5. Check participant names and bottle ownership carefully. **Lock setup & draw opening groups** makes them permanent for that event.
@@ -46,7 +46,11 @@ Retries of the same invitation and recipient are protected against duplicate mes
 
 ## Community membership and personal history
 
-The community owner sees **Invite a new member** on the dashboard. Enter the person’s email and email their invitation or copy their private link. The link is bound to that email and expires after seven days. The invited person chooses a username, display name and password, then opens the verification email. They can then host their own events and accept invitations to other hosts’ events. Hosting does not grant control over anyone else’s events.
+New members choose **Sign up** on Home, or open `https://blindcap.net/register`. They enter a full name, display name, username, email and password, plus optional phone, city/state and tasting notes. They verify their email, then remain **pending** until the community owner approves them. Pending applicants can sign in and edit their own profiles, but cannot host events, search members or accept event invitations.
+
+The community owner receives an email at the stored admin address for new signups. Open **Signup reviews** from Home (or the email’s review link) to inspect the profile and email-verification status. **Approve member** is enabled only after verification; approval makes the profile eligible for host searches and event creation. **Delete signup** asks for confirmation and removes only that pending profile and sign-in account. Approved accounts and events cannot be removed through signup review.
+
+Personal signup invitations are still available under **Invite a new member**, but they no longer bypass approval. Hosting does not grant control over anyone else’s events or admission decisions.
 
 **My profile & password** lets each member edit their name, username, tasting bio, search visibility and password. To be found by a host, keep profile search visibility enabled. Searches show names and usernames; email addresses are not a community directory.
 

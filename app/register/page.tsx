@@ -5,56 +5,65 @@ export default function Register() {
   const [token, setToken] = useState(""),
     [email, setEmail] = useState(""),
     [username, setUsername] = useState(""),
+    [fullName, setFullName] = useState(""),
     [name, setName] = useState(""),
+    [phone, setPhone] = useState(""),
+    [locationText, setLocation] = useState(""),
+    [bio, setBio] = useState(""),
     [password, setPassword] = useState(""),
+    [website, setWebsite] = useState(""),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
-    [signedIn, setSignedIn] = useState(false);
+    [signedIn, setSignedIn] = useState(false),
+    [submitted, setSubmitted] = useState(false);
   useEffect(() => {
-    const params = new URLSearchParams(location.hash.slice(1));
-    const t =
-      params.get("invite") ??
-      sessionStorage.getItem("blindcap-community-invite") ??
-      "";
+    const params = new URLSearchParams(location.hash.slice(1)),
+      t = params.get("invite") ?? "";
     history.replaceState(null, "", "/register");
     setToken(t);
-    if (!t) return;
-    sessionStorage.setItem("blindcap-community-invite", t);
-    request("/api/community", { operation: "invitation", token: t })
-      .then((d) => setEmail(d.email))
-      .catch((e) => setError(e.message));
-    browser()
-      .auth.getUser()
-      .then(({ data }) =>
-        setSignedIn(
-          !!data.user?.email_confirmed_at &&
-            !data.user.email?.endsWith("@guests.blindcap.invalid"),
-        ),
-      );
+    if (t) {
+      request("/api/community", { operation: "invitation", token: t })
+        .then((d) => setEmail(d.email))
+        .catch((e) => setError(e.message));
+      browser()
+        .auth.getUser()
+        .then(({ data }) =>
+          setSignedIn(
+            !!data.user?.email_confirmed_at &&
+              !data.user.email?.endsWith("@guests.blindcap.invalid"),
+          ),
+        );
+    }
   }, []);
   async function join() {
     setBusy(true);
     setError("");
     try {
       const response = await request("/api/community", {
-        operation: signedIn ? "enroll" : "register",
+        operation: token ? (signedIn ? "enroll" : "register") : "apply",
         token,
+        email,
         username,
         displayName: name,
+        fullName,
+        phone,
+        location: locationText,
+        bio,
         password,
+        website,
       });
-      if (signedIn) {
-        sessionStorage.removeItem("blindcap-community-invite");
-        location.replace("/");
-      } else {
-        setPassword("");
+      setPassword("");
+      setSubmitted(true);
+      if (token && signedIn) location.replace("/");
+      else
         setNotice(
-          response.existingRegistration
-            ? "Verification resent. Your original username and password are unchanged. After verifying, use Forgot password if you need to reset it."
-            : "Check your email and open the verification link to finish joining. Any guest history connected during registration will follow your account.",
+          response.verificationSent === false
+            ? "Your signup was saved. We could not send the verification email yet. Use the email sign-in link on Home to request another. Approval also requires email verification."
+            : response.existingRegistration
+              ? "If you already registered, your original username and password are unchanged. Check your email or use Sign in."
+              : "Check your email to verify your address. Your profile stays pending until the administrator approves it. You can sign in and edit your profile while waiting.",
         );
-      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -63,15 +72,16 @@ export default function Register() {
   }
   return (
     <main className="narrow">
-      <p className="eyebrow">INVITATION ONLY</p>
+      <p className="eyebrow">MEMBERSHIP BY APPROVAL</p>
       <h1>Your place in the community.</h1>
       <section className="panel">
-        <h2>Join Blindcap</h2>
-        {!token ? (
-          <p>
-            Registration is private. Ask the community owner for an invitation.
-          </p>
-        ) : (
+        <h2>Sign up for Blindcap</h2>
+        <p>
+          Create your profile, verify your email, then wait for administrator
+          approval. Approved members can host events and be found by hosts for
+          future invitations.
+        </p>
+        {!submitted && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -79,8 +89,36 @@ export default function Register() {
             }}
           >
             <label>
-              Invited email
-              <input value={email} readOnly type="email" />
+              {token ? "Invited email" : "Email address"}
+              <input
+                type="email"
+                autoComplete="email"
+                maxLength={254}
+                value={email}
+                readOnly={!!token}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </label>
+            <label>
+              Full name
+              <input
+                autoComplete="name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                maxLength={100}
+                required
+              />
+            </label>
+            <label>
+              Display name
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={80}
+                required
+              />
+              <small>The name other members see.</small>
             </label>
             <label>
               Username
@@ -93,18 +131,6 @@ export default function Register() {
                 maxLength={24}
                 required
               />
-              <small>
-                3–24 letters, numbers or underscores; start with a letter.
-              </small>
-            </label>
-            <label>
-              Display name
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={80}
-                required
-              />
             </label>
             {!signedIn && (
               <label>
@@ -112,39 +138,77 @@ export default function Register() {
                 <input
                   type="password"
                   autoComplete="new-password"
-                  minLength={12}
-                  maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  minLength={12}
+                  maxLength={128}
                   required
                 />
-                <small>At least 12 characters.</small>
+                <small>12–128 characters.</small>
               </label>
             )}
-            <button disabled={busy || !email}>
-              {busy
-                ? "Please wait…"
-                : signedIn
-                  ? "Join the community"
-                  : "Create my account"}
-            </button>
+            <label>
+              Phone (optional)
+              <input
+                type="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                maxLength={30}
+              />
+            </label>
+            <label>
+              City / state (optional)
+              <input
+                autoComplete="address-level2"
+                value={locationText}
+                onChange={(e) => setLocation(e.target.value)}
+                maxLength={120}
+              />
+            </label>
+            <label>
+              About your tastes (optional)
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                maxLength={500}
+              />
+            </label>
+            <div className="signup-trap" aria-hidden="true">
+              <label>
+                Website
+                <input
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                />
+              </label>
+            </div>
             <p className="fine">
-              Every member can host events or join another host’s event. Your
-              tasting history stays private. Already have an account?{" "}
-              <a href="/">Sign in first</a>, then reopen this invitation.
+              Your full name, email, phone and city/state are private to you and
+              the reviewing administrator. Member searches show only your
+              username, display name and tasting notes after approval.
             </p>
+            <button disabled={busy || !email}>
+              {busy ? "Saving your signup…" : "Submit signup"}
+            </button>
           </form>
         )}
         {error && (
-          <p role="alert" className="error">
+          <p className="error" role="alert">
             {error}
           </p>
         )}
         {notice && (
-          <p role="status" className="notice">
+          <p className="notice" role="status">
             {notice}
           </p>
         )}
+        <p>
+          <a href="/">Already registered? Sign in →</a>
+        </p>
       </section>
     </main>
   );

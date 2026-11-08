@@ -1,6 +1,12 @@
 import type { Event, Actor } from "./engine.ts";
 import { snapshot } from "./engine.ts";
 export type Profile = {
+  full_name?: string;
+  phone?: string;
+  location?: string;
+  approved_at?: string | null;
+  admin_notified_at?: string | null;
+  signup_source?: string;
   id: string;
   username: string;
   display_name: string;
@@ -14,7 +20,9 @@ export function profileFields(input: Record<string, unknown>) {
   const username = String(input.username ?? "")
       .trim()
       .toLowerCase(),
-    display_name = String(input.displayName ?? "").trim(),
+    display_name = String(input.displayName ?? "")
+      .trim()
+      .replace(/\s+/g, " "),
     bio = String(input.bio ?? "").trim();
   if (!/^[a-z][a-z0-9_]{2,23}$/.test(username))
     throw new Error(
@@ -30,6 +38,25 @@ export function profileFields(input: Record<string, unknown>) {
     bio,
     discoverable: input.discoverable !== false,
   };
+}
+export function privateProfileFields(
+  input: Record<string, unknown>,
+  required = false,
+) {
+  const full_name = String(input.fullName ?? "")
+      .trim()
+      .replace(/\s+/g, " "),
+    phone = String(input.phone ?? "").trim(),
+    location = String(input.location ?? "")
+      .trim()
+      .replace(/\s+/g, " ");
+  if ((required && !full_name) || full_name.length > 100)
+    throw new Error("Enter your full name, up to 100 characters.");
+  if (phone.length > 30 || (phone && !/^[+0-9(). \-]+$/.test(phone)))
+    throw new Error("Enter a valid phone number, up to 30 characters.");
+  if (location.length > 120)
+    throw new Error("Keep city/state under 120 characters.");
+  return { full_name, phone, location };
 }
 export function checkPassword(value: unknown): asserts value is string {
   if (typeof value !== "string" || value.length < 12 || value.length > 128)

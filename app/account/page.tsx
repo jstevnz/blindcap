@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import { request, browser } from "@/lib/browser";
 export default function Account() {
   const [p, setProfile] = useState<{
+      status: string;
+      fullName: string;
+      phone: string;
+      location: string;
       username: string;
       displayName: string;
       bio: string;
@@ -16,7 +20,8 @@ export default function Account() {
   useEffect(() => {
     request("/api/community", { operation: "self" })
       .then((d) => {
-        if (d.profile?.status === "active") setProfile(d.profile);
+        if (["active", "pending"].includes(d.profile?.status))
+          setProfile(d.profile);
         else
           setError(
             "Join the private community before maintaining a member profile.",
@@ -42,6 +47,12 @@ export default function Account() {
       <h1>Your profile.</h1>
       {p && (
         <>
+          {p.status === "pending" && (
+            <p className="notice">
+              Your profile is pending administrator approval. Profile changes do
+              not grant event access.
+            </p>
+          )}
           <section className="panel">
             <form
               onSubmit={(e) => {
@@ -58,6 +69,37 @@ export default function Account() {
               <label>
                 Email
                 <input value={p.email} readOnly />
+              </label>
+              <label>
+                Full name
+                <input
+                  autoComplete="name"
+                  value={p.fullName}
+                  onChange={(e) =>
+                    setProfile({ ...p, fullName: e.target.value })
+                  }
+                  maxLength={100}
+                />
+              </label>
+              <label>
+                Phone (optional)
+                <input
+                  type="tel"
+                  autoComplete="tel"
+                  value={p.phone}
+                  onChange={(e) => setProfile({ ...p, phone: e.target.value })}
+                  maxLength={30}
+                />
+              </label>
+              <label>
+                City / state (optional)
+                <input
+                  value={p.location}
+                  onChange={(e) =>
+                    setProfile({ ...p, location: e.target.value })
+                  }
+                  maxLength={120}
+                />
               </label>
               <label>
                 Username

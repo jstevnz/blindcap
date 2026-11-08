@@ -1,7 +1,9 @@
+import { applyForMembership, notifyOwner } from "./applications.ts";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomBytes, createHash } from "node:crypto";
 import {
   profileFields,
+  privateProfileFields,
   checkPassword,
   publicProfile,
   type Profile,
@@ -48,6 +50,7 @@ async function send(
 ) {
   const secret = req.headers.get("x-blindcap-email-key");
   if (!secret) throw new Error("Account email delivery is not configured.");
+  await rate(db, "account-email-daily", 75, 86400);
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -91,7 +94,14 @@ export async function communityAction(
   a: Actor | null,
   req: Request,
 ) {
+  const services = {
+    limit: (key: string, count: number, seconds?: number) =>
+      rate(db, key, count, seconds),
+    deliver: (to: string, subject: string, text: string, key: string) =>
+      send(db, req, to, subject, text, key),
+  };
   const op = input.operation;
+  if (op === "apply") return await applyForMembership(input, db, req, services);
   const source = req.headers.get("x-blindcap-client-ip") ?? "direct";
   if (op === "invitation") {
     await rate(db, "invite-view:" + source, 40);
@@ -146,6 +156,7 @@ export async function communityAction(
         id: userId,
         email: i.email,
         ...fields,
+        ...privateProfileFields(input),
         status: "pending",
         role: "member",
       });
@@ -182,14 +193,18 @@ export async function communityAction(
     if (linkError || !link.properties?.hashed_token)
       throw new Error("Unable to create the verification message.");
     const url = `https://blindcap.net/account/confirm#token_hash=${link.properties.hashed_token}&type=email`;
-    await send(
-      db,
-      req,
-      i.email,
-      "Verify your Blindcap account",
-      `Hi ${existing?.display_name ?? fields.display_name},\n\nVerify your email to finish joining the private Blindcap community:\n${url}\n\nAfter verification you can sign in with your username and password, host events and keep your tasting history.\n\nIf you did not request this account, ignore this email.`,
-      userId + ":verify:" + link.properties.hashed_token,
-    );
+    try {
+      await send(
+        db,
+        req,
+        i.email,
+        "Verify your Blindcap account",
+        `Hi ${existing?.display_name ?? fields.display_name},\n\nVerify your email to finish joining the private Blindcap community:\n${url}\n\nAfter verifying, your profile stays pending until the community owner approves it. You can sign in and edit your profile while waiting.\n\nIf you did not request this account, ignore this email.`,
+        userId + ":verify:" + link.properties.hashed_token,
+      );
+    } finally {
+      await notifyOwner(db, userId!, services.deliver);
+    }
     return existing
       ? { verificationSent: true, existingRegistration: true }
       : { verificationSent: true };
@@ -208,7 +223,7 @@ export async function communityAction(
         ? q.eq("email", identifier)
         : q.eq("username", identifier)
     ).maybeSingle();
-    if (!profile || profile.status !== "active")
+    if (!profile || !["active", "pending"].includes(profile.status))
       throw new Error("Username, email or password is incorrect.");
     const client = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -271,23 +286,16 @@ export async function communityAction(
   }
   if (!a) throw new Error("Please sign in with your verified email.");
   let p = await getProfile(db, a.id);
-  if (p?.status === "pending") {
-    const { data: activated, error } = await db.rpc("bourbon_activate_member", {
-      p_user: a.id,
-      p_email: a.email,
-    });
-    if (error)
-      throw new Error(
-        "Unable to activate your membership. Please contact the community owner.",
-      );
-    if (activated) p = await getProfile(db, a.id);
-  }
-  if (op === "self")
+  if (op === "self") {
+    if (p?.status === "pending") await notifyOwner(db, a.id, services.deliver);
     return {
       profile: p
         ? {
             ...publicProfile(p),
             email: p.email,
+            fullName: p.full_name ?? "",
+            phone: p.phone ?? "",
+            location: p.location ?? "",
             discoverable: p.discoverable,
             role: p.role,
             status: p.status,
@@ -295,6 +303,7 @@ export async function communityAction(
         : null,
       guest: a.email.endsWith("@guests.blindcap.invalid"),
     };
+  }
   if (op === "enroll") {
     const i = await invitation(db, input.token);
     if (i.email !== a.email)
@@ -310,6 +319,7 @@ export async function communityAction(
         id: a.id,
         email: a.email,
         ...fields,
+        ...privateProfileFields(input),
         status: "pending",
         role: "member",
       },
@@ -326,16 +336,13 @@ export async function communityAction(
       .maybeSingle();
     if (reserveError || !reserved)
       throw new Error("Unable to reserve this invitation.");
-    const { data: activated } = await db.rpc("bourbon_activate_member", {
-      p_user: a.id,
-      p_email: a.email,
-    });
-    if (!activated) throw new Error("Unable to activate the invitation.");
-    return { joined: true };
+    await notifyOwner(db, a.id, services.deliver);
+    return { pendingApproval: true };
   }
-  active(p);
   if (op === "profile") {
-    const fields = profileFields(input);
+    if (!p || !["active", "pending"].includes(p.status))
+      throw new Error("An eligible account is required.");
+    const fields = { ...profileFields(input), ...privateProfileFields(input) };
     const { error } = await db
       .from("bourbon_profiles")
       .update(fields)
@@ -343,6 +350,7 @@ export async function communityAction(
     if (error) throw new Error("That username may already be taken.");
     return { saved: true };
   }
+  active(p);
   if (op === "search") {
     const term = String(input.query ?? "")
       .trim()
@@ -415,6 +423,47 @@ export async function communityAction(
     throw new Error(
       "Only the community owner can invite new community members.",
     );
+  if (op === "pending-members") {
+    const { data, error } = await db.rpc("pending_bourbon_members", {
+      p_actor: a.id,
+    });
+    if (error) throw new Error("Unable to load signup reviews.");
+    await Promise.allSettled(
+      (data ?? [])
+        .filter(
+          (x: { admin_notified_at: string | null }) => !x.admin_notified_at,
+        )
+        .slice(0, 5)
+        .map((applicant: { id: string }) =>
+          notifyOwner(db, applicant.id, services.deliver),
+        ),
+    );
+    return { applications: data ?? [] };
+  }
+  if (op === "review-member") {
+    if (
+      !["approve", "delete"].includes(String(input.decision)) ||
+      (input.decision === "delete" && input.confirmed !== true)
+    )
+      throw new Error("Confirm the signup review action.");
+    const { data, error } = await db.rpc("review_bourbon_member", {
+      p_actor: a.id,
+      p_target: input.userId,
+      p_decision: input.decision,
+      p_username: input.username,
+    });
+    if (error)
+      throw new Error(
+        error.message.includes("verify their email")
+          ? "The applicant must verify their email before approval."
+          : "Unable to review this signup. Please refresh the list.",
+      );
+    if (!data)
+      throw new Error(
+        "The signup or your permissions changed. Refresh the review list.",
+      );
+    return { reviewed: true };
+  }
   if (op === "community-invites") {
     const { data, error } = await db
       .from("bourbon_community_invites")

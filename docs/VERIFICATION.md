@@ -57,3 +57,12 @@ The Vercel platform sign-in gate was removed with the owner’s explicit approva
 - Confirmation uses a native focus-trapped dialog naming the event, creation time and host. Focus defaults to Keep event. Delete permanently explicitly warns that scores, invitations and history are removed for all participants.
 - The deletion function rechecks active stored membership and ownership, and matches the confirmed title and revision atomically. Child event access and invitations cascade; user accounts remain. No existing event is deleted by the migration.
 - All 90 tests pass, including real local Postgres ownership/cascade tests, backend handler tests for forged actor/role input and stale confirmation, summary privacy, and confirmation rendering. App and backend type checks and the optimized production build pass.
+
+## Public signup with owner approval
+
+- New-event names start blank with a required Name a new event field and the existing 2–16 tasters/bottles selector.
+- Signup is public, while full membership stays private and approval-controlled. Pending accounts may verify email, sign in and edit only their own profiles. They cannot use event APIs, search profiles or accept invitations until owner approval.
+- Added full name, optional phone/city-state and tasting notes. Private contact fields appear only in self-profile and owner review, never in member search.
+- Owner notification targets the stored active community-owner email, never a request-supplied address. Verification and notification failures preserve the pending signup; notification state and provider idempotency support retries.
+- Existing active memberships and event records are preserved. Approval is checked in service-only SQL against the owner’s stored role, target’s current pending status and confirmed email. Legacy invitation activation cannot bypass the new policy. Pending deletion cannot delete approved members or event-linked accounts.
+- All 105 tests pass, including real local Postgres migration and review tests, notification-recipient/token privacy, signup retry credential protection, failure handling, pending-access denial and unchanged tournament/deletion tests.

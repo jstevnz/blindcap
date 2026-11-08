@@ -1,6 +1,6 @@
-# Private community release and operating guide
+# Community release and operating guide
 
-The owner approved this release on November 8, 2026. The additive migrations below were tested against a local Postgres engine before production rollout. This document records the approved changes, preservation guarantees and live verification procedure.
+The owner approved the original invite-only release on November 8, 2026. The later signup-review release supersedes invitation-only enrollment: public signup creates a pending profile, and verified email plus explicit owner approval is required for membership. See the current host guide. The additive migrations below were tested against a local Postgres engine before production rollout. This document records the approved changes, preservation guarantees and live verification procedure.
 
 ## What members get
 

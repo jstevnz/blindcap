@@ -36,7 +36,7 @@ export default function Home() {
       operation: "self",
     });
     setSelf(account);
-    if (account.profile?.status !== "active") {
+    if (!account.profile) {
       const list = await request("/api/events");
       setEvents(list);
     }
@@ -96,7 +96,7 @@ export default function Home() {
                 ? "Signed in to your guest seat"
                 : `Signed in as ${user}`}
             </p>
-            {member && (
+            {self?.profile && (
               <p>
                 <a href="/account">My profile & password →</a>
               </p>
@@ -107,7 +107,19 @@ export default function Home() {
                   <strong>Events</strong>
                   <span>View & manage →</span>
                 </a>
+                {self.profile?.role === "owner" && (
+                  <a className="event-link" href="/members">
+                    <strong>Signup reviews</strong>
+                    <span>Approve pending profiles →</span>
+                  </a>
+                )}
               </div>
+            ) : self?.profile?.status === "pending" ? (
+              <p className="notice">
+                Your profile is pending administrator approval. You can edit
+                your profile while waiting. Hosting and event invitations become
+                available after approval.
+              </p>
             ) : (
               <div className="event-list">
                 {events.map((e) => (
@@ -171,12 +183,13 @@ export default function Home() {
                   Create an event <span>↗</span>
                 </button>
               </form>
-            ) : (
+            ) : self?.profile?.status === "pending" ? null : (
               <p className="fine">
                 Guest invitations continue to work. To keep permanent history
-                and host your own events, ask the community owner for a
-                membership invitation. Open it while signed into this guest seat
-                to connect this history.
+                and host your own events,{" "}
+                <a href="/register">sign up for a profile</a>. Stay signed into
+                this guest seat during signup to connect this history after
+                approval.
               </p>
             )}
             <button
@@ -287,9 +300,13 @@ export default function Home() {
                 </button>
               )}
             </div>
+            <a className="event-link" href="/register">
+              <strong>Sign up</strong>
+              <span>Create your profile →</span>
+            </a>
             <p className="fine">
-              New here? Open the private community invitation sent to your
-              email. There is no public registration.
+              Administrator approval is required before joining events or
+              hosting.
             </p>
           </>
         )}
@@ -310,7 +327,8 @@ export default function Home() {
           <span>01 / HOST</span>
           <h3>Your night, your rules.</h3>
           <p>
-            Every member can create a private event and invite other members.
+            Every approved member can create a private event and invite other
+            members.
           </p>
         </div>
         <div>

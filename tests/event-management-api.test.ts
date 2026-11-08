@@ -202,3 +202,33 @@ test("anonymous catalog and deletion requests are rejected", async () => {
   for (const action of ["catalog", "delete"])
     assert.equal((await call(a, { action, id: ea.id }, false)).status, 401);
 });
+
+test("pending profiles cannot access event APIs even when they have an old email seat or event ID", async () => {
+  const profile = profiles.find((p) => p.id === a.id)!;
+  profile.status = "pending";
+  try {
+    for (const action of [
+      "create",
+      "list",
+      "catalog",
+      "history",
+      "get",
+      "delete",
+    ])
+      assert.equal(
+        (
+          await call(a, {
+            action,
+            id: ea.id,
+            title: ea.title,
+            tasterCount: 2,
+            confirmed: true,
+            revision: ea.revision,
+          })
+        ).status,
+        403,
+      );
+  } finally {
+    profile.status = "active";
+  }
+});

@@ -200,3 +200,22 @@ test("community helpers remain identical on the server and scoring service", () 
   ).replaceAll('"./engine.ts"', '"./engine"');
   assert.equal(edge, local);
 });
+
+test("private profile contacts stay out of searchable member data", () => {
+  const p = {
+    id: member.id,
+    username: "alice",
+    display_name: "Alice",
+    email: member.email,
+    bio: "Rye fan",
+    discoverable: true,
+    role: "member",
+    status: "active",
+    full_name: "Private Full Name",
+    phone: "555-1212",
+    location: "Private City",
+  } as Profile;
+  const data = JSON.stringify(publicProfile(p));
+  for (const secret of [p.email, p.full_name!, p.phone!, p.location!])
+    assert.equal(data.includes(secret), false);
+});

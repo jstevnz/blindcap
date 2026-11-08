@@ -31,9 +31,14 @@ Deno.serve(async (req: Request) => {
     );
     if (
       input.action === "community" &&
-      ["invitation", "register", "login", "recover", "email-login"].includes(
-        input.operation,
-      )
+      [
+        "invitation",
+        "register",
+        "apply",
+        "login",
+        "recover",
+        "email-login",
+      ].includes(input.operation)
     )
       return json(await communityAction(input, db, null, req));
     if (input.action === "redeem") {
@@ -115,6 +120,11 @@ Deno.serve(async (req: Request) => {
     const communityProfile = await getProfile(db, a.id);
     if (communityProfile?.status === "suspended")
       return json({ error: "Your community membership is suspended." }, 403);
+    if (communityProfile?.status === "pending")
+      return json(
+        { error: "Your profile is pending administrator approval." },
+        403,
+      );
     if (["list", "history", "catalog"].includes(input.action)) {
       const [owned, invited, guest] = await Promise.all([
         input.action === "catalog" &&
