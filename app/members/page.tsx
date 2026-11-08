@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { request } from "@/lib/browser";
 type Applicant = {
+  status: "pending" | "suspended";
   id: string;
   username: string;
   full_name: string;
@@ -104,8 +105,18 @@ export default function Members() {
               </p>
               <p>
                 {p.email} ·{" "}
-                {p.verified ? "Email verified" : "Awaiting email verification"}
+                {p.status === "suspended"
+                  ? "Account disabled — deletion pending"
+                  : p.verified
+                    ? "Email verified"
+                    : "Awaiting email verification"}
               </p>
+              {p.status === "suspended" && (
+                <p className="notice">
+                  Signup disabled. Retry deletion to finish removing its sign-in
+                  account.
+                </p>
+              )}
               {p.phone && <p>Phone: {p.phone}</p>}
               {p.location && <p>City/state: {p.location}</p>}
               {p.bio && <p>Tasting notes: {p.bio}</p>}
@@ -114,7 +125,7 @@ export default function Members() {
               </p>
               <div className="actions">
                 <button
-                  disabled={busy || !p.verified}
+                  disabled={busy || !p.verified || p.status !== "pending"}
                   onClick={() => review(p, "approve")}
                 >
                   Approve member
@@ -127,7 +138,9 @@ export default function Members() {
                     setTarget(p);
                   }}
                 >
-                  Delete signup
+                  {p.status === "suspended"
+                    ? "Retry deletion"
+                    : "Delete signup"}
                 </button>
               </div>
             </article>

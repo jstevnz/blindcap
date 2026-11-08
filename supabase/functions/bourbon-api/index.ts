@@ -118,6 +118,18 @@ Deno.serve(async (req: Request) => {
     if (input.action === "community")
       return json(await communityAction(input, db, a, req));
     const communityProfile = await getProfile(db, a.id);
+    if (
+      !communityProfile &&
+      auth.user.app_metadata?.blindcap_managed &&
+      !a.email.endsWith("@guests.blindcap.invalid")
+    )
+      return json(
+        {
+          error:
+            "Your membership profile is unavailable or awaiting account cleanup.",
+        },
+        403,
+      );
     if (communityProfile?.status === "suspended")
       return json({ error: "Your community membership is suspended." }, 403);
     if (communityProfile?.status === "pending")

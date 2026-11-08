@@ -42,6 +42,7 @@ const events = [
   },
 ];
 let actor = a;
+let managed = false;
 const rpcs: { name: string; args: Record<string, unknown> }[] = [];
 let rpcResult = true;
 let handler: (req: Request) => Promise<Response>;
@@ -70,6 +71,7 @@ globalThis.fetch = async (input, init) => {
       role: "authenticated",
       email_confirmed_at: "2026-11-08T00:00:00Z",
       user_metadata: { role: "owner" },
+      app_metadata: { blindcap_managed: managed },
     });
   if (u.pathname.startsWith("/rest/v1/rpc/")) {
     rpcs.push({
@@ -230,5 +232,28 @@ test("pending profiles cannot access event APIs even when they have an old email
       );
   } finally {
     profile.status = "active";
+  }
+});
+
+test("managed non-guest identities without a profile cannot gain event access during cleanup", async () => {
+  const index = profiles.findIndex((p) => p.id === a.id),
+    [saved] = profiles.splice(index, 1);
+  managed = true;
+  try {
+    for (const action of ["list", "catalog", "get", "create"])
+      assert.equal(
+        (
+          await call(a, {
+            action,
+            id: ea.id,
+            title: "Not allowed",
+            tasterCount: 2,
+          })
+        ).status,
+        403,
+      );
+  } finally {
+    profiles.splice(index, 0, saved);
+    managed = false;
   }
 });

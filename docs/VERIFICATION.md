@@ -66,3 +66,11 @@ The Vercel platform sign-in gate was removed with the owner’s explicit approva
 - Owner notification targets the stored active community-owner email, never a request-supplied address. Verification and notification failures preserve the pending signup; notification state and provider idempotency support retries.
 - Existing active memberships and event records are preserved. Approval is checked in service-only SQL against the owner’s stored role, target’s current pending status and confirmed email. Legacy invitation activation cannot bypass the new policy. Pending deletion cannot delete approved members or event-linked accounts.
 - All 105 tests pass, including real local Postgres migration and review tests, notification-recipient/token privacy, signup retry credential protection, failure handling, pending-access denial and unchanged tournament/deletion tests.
+
+### Signup production verification and cleanup refinement
+
+- Production signup accepted the controlled temporary application without an invitation; the email provider accepted verification and one clearly labeled owner notification. The stored profile remained pending, unverified and unapproved.
+- Unverified sign-in and owner approval were rejected. Only the controlled fixture’s email verification was then simulated; its production username login and own-profile edits worked while hosting, event access, member search, self-approval and owner review stayed blocked.
+- Explicit owner approval through the guarded review function activated the fixture. Production search returned its public fields, not contacts; hosting worked, empty event names failed, and the temporary event was deleted.
+- Hosted Supabase did not allow the requested raw Auth DELETE grant. The final backend uses Auth admin.deleteUser after owner checks and a conditional disable, restores a blocked profile after cleanup failure, and refuses event-linked or approved accounts. No additional Auth/profile FK change was applied.
+- 109 automated tests, both type checks and the optimized build pass, including cleanup failure recovery and orphaned managed-identity access denial. Extra privileged-account live tests were not performed; a full owner-browser delete walkthrough remains an operational rehearsal.

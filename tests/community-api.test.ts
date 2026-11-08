@@ -52,6 +52,7 @@ function fixture() {
   };
   const calls: { name: string; value: unknown }[] = [];
   let limited = false;
+  let deletionFails = false;
   class Query implements PromiseLike<{ data: Row[]; error: null }> {
     filters: ((r: Row) => boolean)[] = [];
     mutation: Row | null = null;
@@ -78,7 +79,19 @@ function fixture() {
     limit() {
       return this;
     }
-    or() {
+    or(value: string) {
+      if (value.includes(".eq.")) {
+        const terms = value.split(",").map((term) => term.split(".eq."));
+        this.filters.push((r) => terms.some(([key, v]) => r[key] === v));
+      }
+      return this;
+    }
+    in(key: string, values: unknown[]) {
+      this.filters.push((r) => values.includes(r[key]));
+      return this;
+    }
+    delete() {
+      this.kind = "delete";
       return this;
     }
     update(v: Row) {
@@ -98,6 +111,11 @@ function fixture() {
     }
     result() {
       let rows = tables[this.table] ?? [];
+      if (this.kind === "delete") {
+        const deleted = rows.filter((r) => this.filters.every((f) => f(r)));
+        tables[this.table] = rows.filter((r) => !deleted.includes(r));
+        return { data: deleted, error: null };
+      }
       if (this.mutation) {
         if (this.kind === "upsert" || this.kind === "insert") {
           let found = rows.find((r) =>
@@ -166,7 +184,11 @@ function fixture() {
         },
         deleteUser: async (id: string) => {
           calls.push({ name: "deleteUser", value: id });
-          return { error: null };
+          return {
+            error: deletionFails
+              ? { message: "Provider down", code: "unexpected_failure" }
+              : null,
+          };
         },
         generateLink: async (v: Row) => {
           calls.push({ name: "generateLink", value: v });
@@ -182,6 +204,9 @@ function fixture() {
     db,
     tables,
     calls,
+    failDeletion: () => {
+      deletionFails = true;
+    },
     limit: () => {
       limited = true;
     },
@@ -708,4 +733,80 @@ test("only the owner can review pending signups; deletion requires confirmation 
       p_username: "member",
     },
   );
+});
+
+test("pending-account removal uses Auth admin deletion only after owner checks and conditional rejection", async () => {
+  const f = fixture();
+  f.tables.bourbon_profiles.find((p) => p.id === member.id)!.status = "pending";
+  await communityAction(
+    {
+      operation: "review-member",
+      userId: member.id,
+      username: "member",
+      decision: "delete",
+      confirmed: true,
+    },
+    f.db,
+    owner,
+    req(),
+  );
+  assert.equal(
+    f.tables.bourbon_profiles.some((p) => p.id === member.id),
+    false,
+  );
+  assert.equal(f.calls.find((c) => c.name === "deleteUser")?.value, member.id);
+});
+test("Auth cleanup failure reports the disabled, retryable pending signup", async () => {
+  const f = fixture();
+  f.failDeletion();
+  f.tables.bourbon_profiles.find((p) => p.id === member.id)!.status = "pending";
+  await assert.rejects(
+    communityAction(
+      {
+        operation: "review-member",
+        userId: member.id,
+        username: "member",
+        decision: "delete",
+        confirmed: true,
+      },
+      f.db,
+      owner,
+      req(),
+    ),
+    /signup is disabled.*retry deletion/,
+  );
+  assert.equal(
+    f.tables.bourbon_profiles.find((p) => p.id === member.id)?.status,
+    "suspended",
+  );
+});
+
+test("pending cleanup refuses approved or event-linked accounts without calling Auth deletion", async () => {
+  for (const linked of [false, true]) {
+    const f = fixture();
+    const p = f.tables.bourbon_profiles.find((p) => p.id === member.id)!;
+    p.status = linked ? "pending" : "active";
+    if (linked)
+      f.tables.bourbon_events = [{ id: "event", owner_id: member.id }];
+    await assert.rejects(
+      communityAction(
+        {
+          operation: "review-member",
+          userId: member.id,
+          username: "member",
+          decision: "delete",
+          confirmed: true,
+        },
+        f.db,
+        owner,
+        req(),
+      ),
+      /approved|event records/,
+    );
+    assert.equal(
+      f.calls.some((c) => c.name === "deleteUser"),
+      false,
+    );
+    assert.equal(p.status, linked ? "pending" : "active");
+  }
 });

@@ -1,3 +1,4 @@
+import { deletePendingApplication } from "./pending-deletion.ts";
 import { applyForMembership, notifyOwner } from "./applications.ts";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomBytes, createHash } from "node:crypto";
@@ -438,7 +439,26 @@ export async function communityAction(
           notifyOwner(db, applicant.id, services.deliver),
         ),
     );
-    return { applications: data ?? [] };
+    const { data: retry, error: retryError } = await db
+      .from("bourbon_profiles")
+      .select(
+        "id,username,display_name,full_name,email,phone,location,bio,created_at,signup_source,admin_notified_at,status",
+      )
+      .eq("role", "member")
+      .eq("status", "suspended")
+      .is("approved_at", null)
+      .order("created_at", { ascending: true })
+      .limit(100);
+    if (retryError) throw new Error("Unable to load pending cleanup attempts.");
+    return {
+      applications: [
+        ...(data ?? []).map((x: Record<string, unknown>) => ({
+          ...x,
+          status: "pending",
+        })),
+        ...(retry ?? []).map((x) => ({ ...x, verified: false })),
+      ],
+    };
   }
   if (op === "review-member") {
     if (
@@ -446,6 +466,10 @@ export async function communityAction(
       (input.decision === "delete" && input.confirmed !== true)
     )
       throw new Error("Confirm the signup review action.");
+    if (input.decision === "delete") {
+      await deletePendingApplication(db, a.id, input.userId, input.username);
+      return { reviewed: true };
+    }
     const { data, error } = await db.rpc("review_bourbon_member", {
       p_actor: a.id,
       p_target: input.userId,
