@@ -1,5 +1,7 @@
+import { communityAction, getProfile, rate } from "./community.ts";
+import { historyFor } from "./community-shared.ts";
 import { randomBytes, createHash, randomUUID } from "node:crypto";
-import { createClient } from "npm:@supabase/supabase-js@2.119.0";
+import { createClient } from "@supabase/supabase-js";
 import {
   applyCommand,
   createEvent,
@@ -26,6 +28,13 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
+    if (
+      input.action === "community" &&
+      ["invitation", "register", "login", "recover", "email-login"].includes(
+        input.operation,
+      )
+    )
+      return json(await communityAction(input, db, null, req));
     if (input.action === "redeem") {
       if (
         typeof input.token !== "string" ||
@@ -55,6 +64,16 @@ Deno.serve(async (req: Request) => {
         );
       // A fresh synthetic identity cannot impersonate an existing email account or another event's guest.
       const guestEmail = `guest-${randomUUID()}@guests.blindcap.invalid`;
+      const { data: guest, error: guestCreateError } =
+        await db.auth.admin.createUser({
+          email: guestEmail,
+          email_confirm: true,
+          app_metadata: { blindcap_managed: true },
+        });
+      if (guestCreateError || !guest.user)
+        throw new Error(
+          "Unable to create your guest seat. Ask your host for a replacement link.",
+        );
       const { data: link, error: linkError } = await db.auth.admin.generateLink(
         { type: "magiclink", email: guestEmail },
       );
@@ -90,7 +109,12 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Please sign in with your verified email." }, 401);
     const a: Actor = { id: auth.user.id, email: auth.user.email.toLowerCase() };
 
-    if (input.action === "list") {
+    if (input.action === "community")
+      return json(await communityAction(input, db, a, req));
+    const communityProfile = await getProfile(db, a.id);
+    if (communityProfile?.status === "suspended")
+      return json({ error: "Your community membership is suspended." }, 403);
+    if (input.action === "list" || input.action === "history") {
       const [owned, invited, guest] = await Promise.all([
         db.from("bourbon_events").select("id,state").eq("owner_id", a.id),
         db
@@ -124,26 +148,61 @@ Deno.serve(async (req: Request) => {
           ].map((x) => [x.id, x]),
         ).values(),
       ];
+      if (input.action === "history") {
+        if (communityProfile?.status !== "active")
+          return json(
+            {
+              error: "Community membership is required for permanent history.",
+            },
+            403,
+          );
+        const histories = [];
+        for (const row of rows) {
+          const grant = guest.data?.find((g) => g.event_id === row.id);
+          let seat: string | undefined;
+          if (grant) {
+            const { data } = await db
+              .from("bourbon_guest_access")
+              .select("participant_id")
+              .eq("event_id", row.id)
+              .eq("auth_user_id", a.id)
+              .maybeSingle();
+            seat = data?.participant_id;
+          }
+          const actor = { ...a, guestParticipantId: seat };
+          if (!authorized(row.state as Event, actor)) continue;
+          const result = historyFor(row.state as Event, actor);
+          if (result) histories.push(result);
+        }
+        return json({ events: histories });
+      }
       return json(
-        rows.map((x) => ({
-          id: x.id,
-          title: x.state.title,
-          phase: x.state.phase,
-          admin: x.state.ownerId === a.id,
-        })),
+        rows
+          .filter(
+            (x) =>
+              x.state.ownerId === a.id ||
+              guest.data?.some((g) => g.event_id === x.id) ||
+              authorized(x.state as Event, a),
+          )
+          .map((x) => ({
+            id: x.id,
+            title: x.state.title,
+            phase: x.state.phase,
+            admin: x.state.ownerId === a.id,
+          })),
       );
     }
     if (input.action === "create") {
-      if (a.email.endsWith("@guests.blindcap.invalid"))
+      if (communityProfile?.status !== "active")
         return json(
           {
-            error:
-              "Guest seats cannot create events. Sign in with your host email.",
+            error: "Join the private community before creating events.",
           },
           403,
         );
       if (typeof input.title !== "string")
         throw new Error("Enter an event name.");
+      await rate(db, "event-create:" + a.id, 10, 86400);
       const event = createEvent(a.id, input.title, input.tasterCount ?? 12);
       const { error } = await db.from("bourbon_events").insert({
         id: event.id,
@@ -175,7 +234,22 @@ Deno.serve(async (req: Request) => {
     if (guestAccess) a.guestParticipantId = guestAccess.participant_id;
     if (!authorized(event, a))
       return json({ error: "You are not invited to this event." }, 403);
-    if (input.action === "get") return json(snapshot(event, a));
+    if (input.action === "get") {
+      const { data: memberInvites } = await db
+        .from("bourbon_member_invites")
+        .select("participant_id,status")
+        .eq("event_id", event.id);
+      return json({
+        ...snapshot(event, a),
+        memberInvitations:
+          event.ownerId === a.id
+            ? (memberInvites ?? []).map((i) => ({
+                participantId: i.participant_id,
+                status: i.status,
+              }))
+            : [],
+      });
+    }
     if (input.action === "invite") {
       if (event.ownerId !== a.id)
         return json(
@@ -185,6 +259,12 @@ Deno.serve(async (req: Request) => {
       if (event.phase === "setup")
         throw new Error(
           "Lock setup and draw opening groups before issuing invitations.",
+        );
+      if (
+        event.participants.find((p) => p.id === input.participantId)?.accountId
+      )
+        throw new Error(
+          "This seat belongs to a community member. Use their member invitation.",
         );
       if (!event.participants.some((p) => p.id === input.participantId))
         throw new Error("Select a registered taster.");
@@ -246,6 +326,39 @@ Deno.serve(async (req: Request) => {
         expiresAt: invite.expires_at,
       });
     }
+    if (input.action === "member-email-details") {
+      if (event.ownerId !== a.id)
+        return json(
+          { error: "Only the event host can email member invitations." },
+          403,
+        );
+      const participant = event.participants.find(
+        (p) => p.id === input.participantId,
+      );
+      if (!participant?.accountId || event.phase === "setup")
+        throw new Error(
+          "Lock the draw with this member selected before sending an invitation.",
+        );
+      const target = await getProfile(db, participant.accountId);
+      if (target?.status !== "active")
+        throw new Error("This community member is not available.");
+      const { data: memberInvite } = await db
+        .from("bourbon_member_invites")
+        .select("status")
+        .eq("event_id", event.id)
+        .eq("participant_id", participant.id)
+        .maybeSingle();
+      if (memberInvite?.status !== "pending")
+        throw new Error("This member invitation is no longer pending.");
+      await rate(db, "member-email:" + a.id, 100, 86400);
+      return json({
+        eventId: event.id,
+        participantId: participant.id,
+        eventTitle: event.title,
+        name: target.display_name,
+        email: target.email,
+      });
+    }
     if (input.action !== "command") throw new Error("Unknown action.");
     const c = input.command;
     if (c?.revision !== event.revision)
@@ -256,9 +369,26 @@ Deno.serve(async (req: Request) => {
         },
         409,
       );
+    if (c.type === "setup") {
+      if (event.ownerId !== a.id)
+        return json(
+          { error: "Only the event host can set up participants." },
+          403,
+        );
+      if (Array.isArray(c.participants))
+        for (const participant of c.participants) {
+          if (participant.accountId) {
+            const profile = await getProfile(db, participant.accountId);
+            if (profile?.status !== "active")
+              throw new Error("Select an active community member.");
+            participant.email = profile.email;
+            participant.name = profile.display_name;
+          }
+        }
+    }
     const next = applyCommand(event, a, c);
     const { data: saved, error: saveError } = await db.rpc(
-      "save_bourbon_event",
+      "save_bourbon_community_event",
       {
         p_id: event.id,
         p_revision: event.revision,

@@ -1,36 +1,51 @@
 "use client";
 import { useEffect, useState } from "react";
-import { tournamentPlan } from "@/lib/tournament";
 import { browser, configured, request } from "@/lib/browser";
+import { tournamentPlan } from "@/lib/tournament";
+import CommunityDashboard from "./components/CommunityDashboard";
+type Self = {
+  profile: {
+    username: string;
+    displayName: string;
+    status: string;
+    role: string;
+  } | null;
+  guest: boolean;
+};
 export default function Home() {
-  const [email, setEmail] = useState(""),
-    [code, setCode] = useState(""),
-    [sent, setSent] = useState(false),
-    [user, setUser] = useState(""),
+  const [user, setUser] = useState(""),
+    [self, setSelf] = useState<Self | null>(null),
     [events, setEvents] = useState<
       { id: string; title: string; phase: string; admin: boolean }[]
     >([]),
+    [identifier, setIdentifier] = useState(""),
+    [password, setPassword] = useState(""),
+    [mode, setMode] = useState<"password" | "email-login" | "recover">(
+      "password",
+    ),
     [title, setTitle] = useState("Yorktown Bourbon Night"),
     [count, setCount] = useState(12),
     [error, setError] = useState(""),
-    [message, setMessage] = useState(""),
+    [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false);
   async function load() {
-    const s = browser();
-    const { data } = await s.auth.getUser();
-    if (data.user) {
-      setUser(data.user.email ?? "");
-      setEvents(await request("/api/events"));
-    }
+    const { data } = await browser().auth.getUser();
+    if (!data.user) return;
+    setUser(data.user.email ?? "");
+    const account: Self = await request("/api/community", {
+      operation: "self",
+    });
+    setSelf(account);
+    const list = await request("/api/events");
+    setEvents(list);
   }
   useEffect(() => {
-    if (new URLSearchParams(location.search).get("auth") === "expired")
-      setError("That sign-in link expired. Please request another.");
     if (configured) load().catch((e) => setError(e.message));
   }, []);
   async function act(f: () => Promise<void>) {
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       await f();
     } catch (e) {
@@ -39,10 +54,12 @@ export default function Home() {
       setBusy(false);
     }
   }
+  const member = self?.profile?.status === "active";
+  const plan = tournamentPlan(count);
   return (
     <main>
       <section className="hero">
-        <p className="eyebrow">THE YORKTOWN TRADITION</p>
+        <p className="eyebrow">THE PRIVATE BLINDCAP COMMUNITY</p>
         <h1>
           Your bottles.
           <br />
@@ -55,30 +72,33 @@ export default function Home() {
         </p>
         <div className="hero-rule">
           <span>2–16 TASTERS</span>
-          <span>ONE CHAMPION</span>
+          <span>HOST OR PARTICIPATE</span>
           <span>100% BLIND</span>
         </div>
       </section>
       <section className="panel welcome">
         <p className="eyebrow">YOUR SEAT AT THE TABLE</p>
-        <h2>{user ? "Welcome back." : "The night starts here."}</h2>
+        <h2>
+          {member
+            ? `Welcome, ${self.profile!.displayName}.`
+            : user
+              ? "Welcome back."
+              : "The night starts here."}
+        </h2>
         {!configured ? (
-          <>
-            <p>
-              The tasting room is being prepared. Your host still needs to
-              connect the database before sign-in opens.
-            </p>
-            <a className="button secondary" href="/rules">
-              See how the tasting works
-            </a>
-          </>
+          <p>The tasting room is being prepared.</p>
         ) : user ? (
           <>
             <p className="muted">
-              {user.endsWith("@guests.blindcap.invalid")
+              {self?.guest
                 ? "Signed in to your guest seat"
                 : `Signed in as ${user}`}
             </p>
+            {member && (
+              <p>
+                <a href="/account">My profile & password →</a>
+              </p>
+            )}
             <div className="event-list">
               {events.map((e) => (
                 <a className="event-link" key={e.id} href={`/event/${e.id}`}>
@@ -91,14 +111,9 @@ export default function Home() {
                   <span>↗</span>
                 </a>
               ))}
-              {!events.length && (
-                <p>
-                  No invitations yet. Open the private invitation link your host
-                  sent you.
-                </p>
-              )}
+              {!events.length && <p>Your accepted events will appear here.</p>}
             </div>
-            {!user.endsWith("@guests.blindcap.invalid") && (
+            {member ? (
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -112,7 +127,7 @@ export default function Home() {
                 }}
               >
                 <label>
-                  Hosting a night?
+                  Host a new event
                   <input
                     value={title}
                     maxLength={100}
@@ -124,10 +139,10 @@ export default function Home() {
                   Number of tasters
                   <select
                     value={count}
-                    onChange={(ev) => setCount(Number(ev.target.value))}
+                    onChange={(e) => setCount(Number(e.target.value))}
                   >
                     {Array.from({ length: 15 }, (_, i) => (
-                      <option key={i + 2} value={i + 2}>
+                      <option value={i + 2} key={i + 2}>
                         {i + 2} tasters · {i + 2} bottles
                       </option>
                     ))}
@@ -136,12 +151,19 @@ export default function Home() {
                 <p className="fine">
                   {count <= 4
                     ? `One final of ${count}${count === 2 ? " · Head-to-head" : ""}`
-                    : `Opening: ${tournamentPlan(count).opening.join(" + ")}${tournamentPlan(count).semifinal.length ? ` → Semifinals: ${tournamentPlan(count).semifinal.join(" + ")}` : ""} → Final four`}
+                    : `Opening: ${plan.opening.join(" + ")}${plan.semifinal.length ? ` → Semifinals: ${plan.semifinal.join(" + ")}` : ""} → Final four`}
                 </p>
                 <button disabled={busy}>
                   Create an event <span>↗</span>
                 </button>
               </form>
+            ) : (
+              <p className="fine">
+                Guest invitations continue to work. To keep permanent history
+                and host your own events, ask the community owner for a
+                membership invitation. Open it while signed into this guest seat
+                to connect this history.
+              </p>
             )}
             <button
               className="text-button"
@@ -149,6 +171,7 @@ export default function Home() {
                 act(async () => {
                   await browser().auth.signOut();
                   setUser("");
+                  setSelf(null);
                   setEvents([]);
                 })
               }
@@ -157,110 +180,138 @@ export default function Home() {
             </button>
           </>
         ) : (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              act(async () => {
-                const s = browser();
-                if (sent) {
-                  const { error } = await s.auth.verifyOtp({
-                    email,
-                    token: code,
-                    type: "email",
-                  });
-                  if (error) throw error;
-                  await load();
-                } else {
-                  const { error } = await s.auth.signInWithOtp({
-                    email,
-                    options: {
-                      shouldCreateUser: true,
-                      emailRedirectTo: location.origin + "/auth/callback",
-                    },
-                  });
-                  if (error) throw error;
-                  setSent(true);
-                  setMessage(
-                    "Check your email. Open the sign-in link on this device, or enter the code if your email includes one.",
-                  );
-                }
-              });
-            }}
-          >
-            <label>
-              Your email
-              <input
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={sent}
-                placeholder="you@example.com"
-                required
-              />
-            </label>
-            {sent && (
+          <>
+            <p className="muted">
+              Private community. Sign in to host an event or accept an
+              invitation.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                act(async () => {
+                  if (mode === "password") {
+                    const d = await request("/api/community", {
+                      operation: "login",
+                      identifier,
+                      password,
+                    });
+                    const { error } = await browser().auth.setSession(
+                      d.session,
+                    );
+                    if (error) throw error;
+                    setPassword("");
+                    await load();
+                  } else {
+                    await request("/api/community", {
+                      operation: mode,
+                      email: identifier,
+                    });
+                    setNotice(
+                      "If that email has an eligible account, a private link has been sent.",
+                    );
+                  }
+                });
+              }}
+            >
               <label>
-                Sign-in code
+                {mode === "password" ? "Username or email" : "Email address"}
                 <input
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
+                  autoComplete={mode === "password" ? "username" : "email"}
+                  type={mode === "password" ? "text" : "email"}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                 />
               </label>
-            )}
-            <button disabled={busy}>
-              {busy
-                ? "Please wait…"
-                : sent
-                  ? "Take your seat"
-                  : "Email me a sign-in link"}
-              <span>↗</span>
-            </button>
-            {sent && (
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => {
-                  setSent(false);
-                  setMessage("");
-                }}
-              >
-                Use another email or request a new code
+              {mode === "password" && (
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    maxLength={128}
+                  />
+                </label>
+              )}
+              <button disabled={busy}>
+                {busy
+                  ? "Please wait…"
+                  : mode === "password"
+                    ? "Sign in"
+                    : mode === "recover"
+                      ? "Email password reset"
+                      : "Email sign-in link"}{" "}
+                <span>↗</span>
               </button>
-            )}
+            </form>
+            <div className="actions">
+              {mode !== "password" && (
+                <button
+                  className="text-button"
+                  onClick={() => setMode("password")}
+                >
+                  Use password
+                </button>
+              )}
+              {mode !== "email-login" && (
+                <button
+                  className="text-button"
+                  onClick={() => setMode("email-login")}
+                >
+                  Use email sign-in link
+                </button>
+              )}
+              {mode !== "recover" && (
+                <button
+                  className="text-button"
+                  onClick={() => setMode("recover")}
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
             <p className="fine">
-              Hosting? Sign in with your Supabase account email. Guests use
-              their private invitation link.
+              New here? Open the private community invitation sent to your
+              email. There is no public registration.
             </p>
-          </form>
+          </>
         )}
         {error && (
-          <p role="alert" className="error">
+          <p className="error" role="alert">
             {error}
           </p>
         )}
-        {message && <p role="status">{message}</p>}
+        {notice && (
+          <p className="notice" role="status">
+            {notice}
+          </p>
+        )}
       </section>
+      {member && <CommunityDashboard owner={self.profile!.role === "owner"} />}
       <section className="how">
         <div>
-          <span>01 / THE DRAW</span>
-          <h3>Meet your mystery pours.</h3>
-          <p>Your event’s draw adapts to the number of bottles.</p>
-        </div>
-        <div>
-          <span>02 / THE TASTE</span>
-          <h3>Trust your own palate.</h3>
+          <span>01 / HOST</span>
+          <h3>Your night, your rules.</h3>
           <p>
-            Score each pour, then rank your favorites. Preference leads the way.
+            Every member can create a private event and invite other members.
           </p>
         </div>
         <div>
-          <span>03 / THE REVEAL</span>
-          <h3>A toast to the champion.</h3>
-          <p>The Yorktown Tumbler awaits. So does the infamous Swill Award.</p>
+          <span>02 / TASTE</span>
+          <h3>Trust your own palate.</h3>
+          <p>
+            Score each pour and rank your favorites. Preference leads the way.
+          </p>
+        </div>
+        <div>
+          <span>03 / REMEMBER</span>
+          <h3>Keep your tasting story.</h3>
+          <p>
+            Your own ballots, bottles and results stay in your private history.
+          </p>
         </div>
       </section>
       <a className="text-button" href="/rules">

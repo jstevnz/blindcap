@@ -6,6 +6,7 @@ export type Participant = {
   name: string;
   email: string;
   invitationEmail?: string;
+  accountId?: string;
 };
 export type Bottle = {
   id: string;
@@ -89,7 +90,7 @@ export function member(e: Event, a: Actor) {
   return e.participants.find((p) =>
     a.guestParticipantId
       ? p.id === a.guestParticipantId
-      : p.email.toLowerCase() === a.email.toLowerCase(),
+      : !p.accountId && p.email.toLowerCase() === a.email.toLowerCase(),
   );
 }
 export function authorized(e: Event, a: Actor) {
@@ -403,7 +404,10 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
           c.participants.length === count && c.bottles.length === count,
           `Enter exactly ${count} tasters and ${count} bottles.`,
         );
-        const ps = c.participants as { name: string; email: string }[];
+        const ps = c.participants as { name: string; email: string; accountId?:string }[];
+        const accountIds=ps.map(p=>p.accountId).filter(Boolean);
+        assert(new Set(accountIds).size===accountIds.length,"Each member can have only one seat per event.");
+        assert(ps.every(p=>!p.accountId||/^[0-9a-f-]{36}$/i.test(p.accountId)),"Select a valid member profile.");
         assert(
           ps.every(
             (p) =>
@@ -426,6 +430,7 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
           id: randomUUID(),
           name: p.name.trim(),
           email: p.email.trim().toLowerCase(),
+          ...(p.accountId?{accountId:p.accountId}:{}),
         }));
         const bs = c.bottles as { name: string; ownerIndex: number }[];
         assert(
@@ -555,6 +560,7 @@ export function snapshot(e: Event, a: Actor) {
     phase: e.phase,
     revealed: e.revealed,
     admin,
+    memberInvitations:[] as {participantId:string;status:string}[],
     participantId: p?.id ?? null,
     participants: admin
       ? e.participants

@@ -1,5 +1,7 @@
 # Blindcap verification
 
+The earlier entries below describe their release dates. The private-community release supersedes the original email-only sign-in design and adds username/password accounts. See [Community release and operating guide](COMMUNITY-ROLLOUT.md) for the current model.
+
 Verified November 7, 2026.
 
 - Production deployment READY on Vercel from GitHub commit `378371bb058b4b315f6254df32fcd1a66e44939d`.

@@ -2,12 +2,12 @@
 
 ## Before guests arrive
 
-1. Open the app on your phone and sign in with your host email.
+1. Open the app and sign in with your community username/email and password, or an email sign-in link. Every community member can host an event. The original host can open **My profile & password** to choose a username and set a password without making another account.
 2. Choose the number of tasters (2–16), review the proposed format, and create an event. Open **Host controls**. The selected count is fixed for that event.
-3. Enter the selected number of names and their bourbon names. Emails are optional. If you are tasting, put your signed-in host email on your row. One row means one taster and the bottle they own.
-4. Save. Physically wrap each bottle and label it with its row's bottle number (01–12). Keep identities away from guests.
+3. For each row, search and select an existing community profile, then enter the bourbon they brought. If you are tasting, select your own profile on your row. For an occasional guest without a community account, enter their name and optional email instead. One row means one taster and the bottle they own. Confirm attendance before locking the draw; the roster becomes permanent.
+4. Save. Physically wrap each bottle and label it with its row's bottle number (01 through the actual bottle count). Keep identities away from guests.
 5. Check participant names and bottle ownership carefully. **Lock setup & draw opening groups** makes them permanent for that event.
-6. In Host controls, create a private invitation link for each guest. Copy and share each individually. The guest opens it and taps Join the tasting on their phone. Links work once and expire after 72 hours, so issue them close to the event. Do not send one guest another guest’s link. Tasters do not need GitHub, Vercel or email accounts.
+6. After the draw, selected members see an event invitation on their dashboard. They sign in and choose **Accept & join** to take their seat. Use **Email event invitation** to notify a selected member at their saved address. For guest rows, create a private invitation link in Host controls. Copy and share each individually. The guest opens it and taps Join the tasting on their phone. Links work once and expire after 72 hours, so issue them close to the event. Do not send one guest another guest’s link. Tasters do not need GitHub, Vercel or email accounts.
 
 ## Each flight
 
@@ -17,7 +17,7 @@
 - The host sees a progress count and who has submitted. Tasters can revise until the flight closes.
 - Wait for every taster’s submission, then close and lock the ballots. Open the next flight.
 - After all opening flights, choose **Advance to next stage**. If semifinals are scheduled, repeat after both semifinals. Events with 2–4 tasters start directly with their final; five tasters have one preliminary flight of five, with four qualifying.
-- If a blind tie-break appears, open it, collect all 12 preference rankings and close it. Runoffs do not use attribute ratings. Then retry advancement. A repeated runoff tie requires another runoff.
+- If a blind tie-break appears, open it, collect every taster’s preference rankings and close it. Runoffs do not use attribute ratings. Then retry advancement. A repeated runoff tie requires another runoff.
 
 ## Final and reveal
 
@@ -43,3 +43,13 @@ In Host controls → Private guest invitations, enter an Invitation email and sa
 The app checks that the link belongs to that seat and has not been used, replaced or expired. Email sending uses `invitations@blindcap.net`. “Invitation emailed” means Resend accepted the message; delivery, bounce and spam-folder outcomes are separate. Check Resend’s email logs if needed.
 
 Retries of the same invitation and recipient are protected against duplicate messages for 24 hours. To issue another invitation after a successful send or an expired/used link, create a replacement link and send it. A replacement invalidates the prior unused link.
+
+## Community membership and personal history
+
+The community owner sees **Invite a new member** on the dashboard. Enter the person’s email and email their invitation or copy their private link. The link is bound to that email and expires after seven days. The invited person chooses a username, display name and password, then opens the verification email. They can then host their own events and accept invitations to other hosts’ events. Hosting does not grant control over anyone else’s events.
+
+**My profile & password** lets each member edit their name, username, tasting bio, search visibility and password. To be found by a host, keep profile search visibility enabled. Searches show names and usernames; email addresses are not a community directory.
+
+**Your tasting history** appears on the member dashboard after an event is complete and revealed. It includes that member’s own rankings and attribute scores, their bottle’s placement and a link to the full revealed results. A host sees their hosted events, but cannot read other people’s private individual ballots.
+
+If a guest wants to join the community and retain their guest history, have them open their community registration invitation while still signed into that guest seat. Verification connects that seat to the new member profile. For later events, select their existing profile rather than making another guest seat. Existing guest links and submitted ballots remain valid.

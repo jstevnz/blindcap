@@ -1,1 +1,9 @@
-{"compilerOptions":{"strict":true},"nodeModulesDir":"auto"}
+{
+  "compilerOptions": {
+    "strict": true
+  },
+  "nodeModulesDir": "auto",
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.119.0"
+  }
+}

@@ -1,7 +1,10 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-export async function backend(data: unknown) {
+export async function backend(
+  data: unknown,
+  options: { public?: boolean; email?: boolean; clientIp?: string } = {},
+) {
   const jar = await cookies();
   const s = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,13 +20,13 @@ export async function backend(data: unknown) {
     },
   );
   const { data: verified, error } = await s.auth.getUser();
-  if (error || !verified.user?.email_confirmed_at)
+  if (!options.public && (error || !verified.user?.email_confirmed_at))
     return Response.json(
       { error: "Please sign in with your verified email." },
       { status: 401 },
     );
   const { data: session } = await s.auth.getSession();
-  if (!session.session)
+  if (!options.public && !session.session)
     return Response.json({ error: "Please sign in." }, { status: 401 });
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/bourbon-api`,
@@ -31,7 +34,15 @@ export async function backend(data: unknown) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${session.session.access_token}`,
+        ...(session.session
+          ? { Authorization: `Bearer ${session.session.access_token}` }
+          : {}),
+        ...(options.email && process.env.RESEND_API_KEY
+          ? { "x-blindcap-email-key": process.env.RESEND_API_KEY }
+          : {}),
+        ...(options.clientIp
+          ? { "x-blindcap-client-ip": options.clientIp }
+          : {}),
         apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       },
       body: JSON.stringify(data),
