@@ -61,7 +61,6 @@ export default function Home() {
   return (
     <main>
       <section className="hero">
-        <p className="eyebrow">BLIND COMPETITION</p>
         <h1>
           {user ? (
             <>
