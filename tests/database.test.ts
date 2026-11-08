@@ -297,11 +297,12 @@ test("community migrations preserve legacy data and enforce private membership",
       },
     );
     await db.exec(await migration("20261108202247_invite_only_auth.sql"));
+    await db.exec(await migration("20261108205122_defer_invitation_guard.sql"));
     await t.test(
       "direct account creation and user-metadata spoofing fail; service-managed invites work",
       async () => {
         await db.exec(
-          "grant usage on schema auth to supabase_auth_admin;grant insert on auth.users to supabase_auth_admin;set role supabase_auth_admin",
+          "grant usage on schema auth to supabase_auth_admin;grant select,insert,update on auth.users to supabase_auth_admin;set role supabase_auth_admin",
         );
         await assert.rejects(
           db.query(
@@ -318,7 +319,12 @@ test("community migrations preserve legacy data and enforce private membership",
         await db.query(
           `insert into auth.users(id,email,raw_app_meta_data) values(gen_random_uuid(),'invited@example.com','{"blindcap_managed":true}')`,
         );
+        await db.exec("begin");
+        await db.query("insert into auth.users(id,email) values('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee','gotrue-order@example.com')");
+        await db.query("update auth.users set raw_app_meta_data='{\"blindcap_managed\":true}' where id='eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'");
+        await db.exec("commit");
         await db.exec("reset role");
+        assert.equal(await scalar("select count(*)::int from auth.users where email='gotrue-order@example.com'"),1);
         assert.equal(
           await scalar(
             "select count(*)::int from auth.users where email='invited@example.com'",

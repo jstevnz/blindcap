@@ -36,3 +36,16 @@ The Vercel platform sign-in gate was removed with the owner’s explicit approva
 - 51 automated tests passed, including recipient validation, stable idempotency keys, server-only provider authentication, provider failure handling and delivery-contact privacy.
 - Delivery contact changes do not change participant authentication or expose addresses to guests.
 - Production build and application/Edge Function type checks passed. Provider calls were mocked; actual inbox delivery still needs an owner-controlled test invitation after the production secret is configured.
+
+## Private community release — November 8, 2026
+
+- 74 automated tests and app/backend type checks passed. Production Next.js build and GitHub Actions checks passed.
+- Applied additive community tables and service-only functions. The original four events retained the same revisions and full-state digests; six guest invitations and six guest-seat bindings were preserved.
+- Existing verified host became the sole active community owner. All temporary rehearsal members, synthetic guest identities, invitations and event records were removed afterward.
+- Deployed backend version 5 with member-hosted events, accepted profile seats, private search, account verification/recovery and own-ballot history.
+- Live registration exposed Supabase’s insert-then-metadata order; the deferred constraint-trigger migration checks the final stored account at commit. An actual production guard test rejected user-metadata spoofing. Genuine invited account creation and guest redemption then passed.
+- Live temporary three-taster rehearsal passed: a member hosted and tasted, a second member accepted their profile invitation, and a third joined through a guest link. Unaccepted access, guest hosting, guest-link replay, non-host controls and duplicate ranks were rejected. Concurrent ballots, final standings, controlled reveal, own-bottle results and personal ballot history passed.
+- Verified production cookie session → Next.js API → Supabase → sanitized response at `https://blindcap.net`, including private history and foreign-origin write rejection. Username/password login passed against actual Supabase Auth.
+- Account-email tests deliberately used an invalid provider key and non-deliverable test addresses, confirming that users remain pending and unverified when delivery fails. Only these isolated test accounts were then marked verified for the rehearsal. No emails were sent to real people. Actual verification-email receipt remains an owner-led inbox check.
+- Local in-app browser displayed the new community sign-in screen. A full interactive phone rehearsal remains useful before the event.
+- Browser roles cannot read profiles or execute privileged membership functions; RLS is enabled on all private tables. RLS-without-policy notices are expected because browser table grants are deliberately revoked. Supabase’s optional [leaked-password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) remains disabled in the existing project; application registration requires 12–128 characters.
