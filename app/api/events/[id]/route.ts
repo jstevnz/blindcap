@@ -20,3 +20,19 @@ export async function POST(req: Request, ctx: Context) {
     return failure(e);
   }
 }
+
+export async function DELETE(req: Request, ctx: Context) {
+  try {
+    checkOrigin(req);
+    const input = await body(req);
+    return await backend({
+      action: "delete",
+      id: (await ctx.params).id,
+      revision: input.revision,
+      title: input.title,
+      confirmed: input.confirmed,
+    });
+  } catch (e) {
+    return failure(e);
+  }
+}

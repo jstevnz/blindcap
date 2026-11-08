@@ -50,6 +50,14 @@ The community owner sees **Invite a new member** on the dashboard. Enter the per
 
 **My profile & password** lets each member edit their name, username, tasting bio, search visibility and password. To be found by a host, keep profile search visibility enabled. Searches show names and usernames; email addresses are not a community directory.
 
-**Your tasting history** appears on the member dashboard after an event is complete and revealed. It includes that member’s own rankings and attribute scores, their bottle’s placement and a link to the full revealed results. A host sees their hosted events, but cannot read other people’s private individual ballots.
+**Your tasting history** appears under **Events** after an event is complete and revealed. It includes that member’s own rankings and attribute scores, their bottle’s placement and a link to the full revealed results. A host sees their hosted events, but cannot read other people’s private individual ballots.
 
 If a guest wants to join the community and retain their guest history, have them open their community registration invitation while still signed into that guest seat. Verification connects that seat to the new member profile. For later events, select their existing profile rather than making another guest seat. Existing guest links and submitted ballots remain valid.
+
+## Event history and deletion
+
+Choose **Events** from Home to see current and prior events, filter by completed/in-progress/hosted-by-me, and search by event or host name. Detailed personal tasting history is also on this page, keeping Home compact.
+
+Hosts can delete only events they created. The original community-owner account can see all event summaries and delete any community event. This does not give other hosts access to unrelated events, and the community-wide summary does not expose blind bottle identities or individual ballots.
+
+Choose **Delete event** and check its name, creation time and host in the confirmation prompt. **Keep event** cancels; **Delete permanently** removes that event’s scores, invitations, seat access and tasting history for everyone. Member accounts remain. If the event changes while the prompt is open, deletion stops and you must review the updated list and confirm again.

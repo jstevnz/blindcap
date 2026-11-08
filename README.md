@@ -69,3 +69,9 @@ See [Host guide](docs/HOST-GUIDE.md). No actual participant names, bottle identi
 Save `RESEND_API_KEY` directly in Vercel as a Production Secret, scoped to sending from the verified `blindcap.net` domain. Never expose it under a public variable or copy it into source. The browser submits only the seat and existing token; the backend checks host ownership, the current invitation digest, expiration and redemption status, then returns the saved delivery address to the server. User-supplied recipient overrides and arbitrary links are not accepted.
 
 Resend requests use deterministic idempotency keys to protect retries for 24 hours. Transport failures preserve the existing invitation so the same request can be retried. Tests mock the provider and do not email real guests. Verify inbox delivery with a host-controlled test seat before sending event invitations.
+
+## Event management
+
+Home links to `/events` instead of expanding every event and historical ballot. The private catalog lists hosted and accepted participant events; the verified active community owner sees all event summaries. Only an active event host or active community owner may delete an event. Ownership comes from authenticated IDs and stored profile roles, never email text or user-editable metadata.
+
+Deletion uses an origin-checked Next.js DELETE route and a service-only SQL function that rechecks ownership and matches the confirmed event ID, title and revision. A native modal defaults focus to **Keep event** and describes permanent removal for all participants. Existing foreign keys cascade event invitations and access grants; auth users and profiles are preserved. No existing event is removed by installing this feature.

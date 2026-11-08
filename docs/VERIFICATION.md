@@ -49,3 +49,11 @@ The Vercel platform sign-in gate was removed with the owner’s explicit approva
 - Account-email tests deliberately used an invalid provider key and non-deliverable test addresses, confirming that users remain pending and unverified when delivery fails. Only these isolated test accounts were then marked verified for the rehearsal. No emails were sent to real people. Actual verification-email receipt remains an owner-led inbox check.
 - Local in-app browser displayed the new community sign-in screen. A full interactive phone rehearsal remains useful before the event.
 - Browser roles cannot read profiles or execute privileged membership functions; RLS is enabled on all private tables. RLS-without-policy notices are expected because browser table grants are deliberately revoked. Supabase’s optional [leaked-password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) remains disabled in the existing project; application registration requires 12–128 characters.
+
+## Event management update
+
+- Added a dedicated Events page with all-event, in-progress, completed and hosted-by-me filters. Home keeps one Events link instead of expanded lists and tasting journals. Personal tasting history moved to Events.
+- Active hosts can delete their own events. The active community owner sees all event summaries and may delete any event. Global summaries expose no bottle identities, participant emails or private ballots, and do not grant unrelated round controls.
+- Confirmation uses a native focus-trapped dialog naming the event, creation time and host. Focus defaults to Keep event. Delete permanently explicitly warns that scores, invitations and history are removed for all participants.
+- The deletion function rechecks active stored membership and ownership, and matches the confirmed title and revision atomically. Child event access and invitations cascade; user accounts remain. No existing event is deleted by the migration.
+- All 90 tests pass, including real local Postgres ownership/cascade tests, backend handler tests for forged actor/role input and stale confirmation, summary privacy, and confirmation rendering. App and backend type checks and the optimized production build pass.

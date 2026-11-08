@@ -36,8 +36,10 @@ export default function Home() {
       operation: "self",
     });
     setSelf(account);
-    const list = await request("/api/events");
-    setEvents(list);
+    if (account.profile?.status !== "active") {
+      const list = await request("/api/events");
+      setEvents(list);
+    }
   }
   useEffect(() => {
     if (configured) load().catch((e) => setError(e.message));
@@ -99,20 +101,31 @@ export default function Home() {
                 <a href="/account">My profile & password →</a>
               </p>
             )}
-            <div className="event-list">
-              {events.map((e) => (
-                <a className="event-link" key={e.id} href={`/event/${e.id}`}>
-                  <span>
-                    <strong>{e.title}</strong>
-                    <small>
-                      {e.admin ? "HOST" : "TASTER"} · {e.phase.toUpperCase()}
-                    </small>
-                  </span>
-                  <span>↗</span>
+            {member ? (
+              <div className="actions home-navigation">
+                <a className="event-link" href="/events">
+                  <strong>Events</strong>
+                  <span>View & manage →</span>
                 </a>
-              ))}
-              {!events.length && <p>Your accepted events will appear here.</p>}
-            </div>
+              </div>
+            ) : (
+              <div className="event-list">
+                {events.map((e) => (
+                  <a className="event-link" key={e.id} href={`/event/${e.id}`}>
+                    <span>
+                      <strong>{e.title}</strong>
+                      <small>
+                        {e.admin ? "HOST" : "TASTER"} · {e.phase.toUpperCase()}
+                      </small>
+                    </span>
+                    <span>↗</span>
+                  </a>
+                ))}
+                {!events.length && (
+                  <p>Your accepted events will appear here.</p>
+                )}
+              </div>
+            )}
             {member ? (
               <form
                 onSubmit={(e) => {

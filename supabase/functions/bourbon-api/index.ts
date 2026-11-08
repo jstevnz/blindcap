@@ -1,3 +1,4 @@
+import { canDeleteEvent, eventSummary } from "./event-management.ts";
 import { communityAction, getProfile, rate } from "./community.ts";
 import { historyFor } from "./community-shared.ts";
 import { randomBytes, createHash, randomUUID } from "node:crypto";
@@ -114,16 +115,26 @@ Deno.serve(async (req: Request) => {
     const communityProfile = await getProfile(db, a.id);
     if (communityProfile?.status === "suspended")
       return json({ error: "Your community membership is suspended." }, 403);
-    if (input.action === "list" || input.action === "history") {
+    if (["list", "history", "catalog"].includes(input.action)) {
       const [owned, invited, guest] = await Promise.all([
-        db.from("bourbon_events").select("id,state").eq("owner_id", a.id),
+        input.action === "catalog" &&
+        communityProfile?.status === "active" &&
+        communityProfile.role === "owner"
+          ? db
+              .from("bourbon_events")
+              .select("id,state,created_at")
+              .order("created_at", { ascending: false })
+          : db
+              .from("bourbon_events")
+              .select("id,state,created_at")
+              .eq("owner_id", a.id),
         db
           .from("bourbon_events")
-          .select("id,state")
+          .select("id,state,created_at")
           .contains("member_emails", [a.email]),
         db
           .from("bourbon_guest_access")
-          .select("event_id")
+          .select("event_id,participant_id")
           .eq("auth_user_id", a.id),
       ]);
       if (owned.error || invited.error || guest.error)
@@ -131,7 +142,7 @@ Deno.serve(async (req: Request) => {
       const guestEvents = guest.data?.length
         ? await db
             .from("bourbon_events")
-            .select("id,state")
+            .select("id,state,created_at")
             .in(
               "id",
               guest.data.map((g) => g.event_id),
@@ -148,6 +159,46 @@ Deno.serve(async (req: Request) => {
           ].map((x) => [x.id, x]),
         ).values(),
       ];
+      if (input.action === "catalog") {
+        const global =
+          communityProfile?.status === "active" &&
+          communityProfile.role === "owner";
+        const ownerIds = [...new Set(rows.map((row) => row.state.ownerId))];
+        const hosts = ownerIds.length
+          ? await db
+              .from("bourbon_profiles")
+              .select("id,display_name")
+              .in("id", ownerIds)
+          : { data: [], error: null };
+        if (hosts.error) throw new Error("Unable to load event hosts.");
+        const events = rows
+          .map((row) =>
+            eventSummary(
+              row.state as Event,
+              row.created_at,
+              hosts.data?.find((h) => h.id === row.state.ownerId)
+                ?.display_name ?? "Event host",
+              {
+                ...a,
+                guestParticipantId: guest.data?.find(
+                  (g) => g.event_id === row.id,
+                )?.participant_id,
+              },
+              communityProfile,
+            ),
+          )
+          .filter((row) => global || row.canOpen)
+          .sort(
+            (x, y) =>
+              y.createdAt.localeCompare(x.createdAt) ||
+              x.id.localeCompare(y.id),
+          );
+        return json({
+          events,
+          communityOwner: global,
+          member: communityProfile?.status === "active",
+        });
+      }
       if (input.action === "history") {
         if (communityProfile?.status !== "active")
           return json(
@@ -158,17 +209,9 @@ Deno.serve(async (req: Request) => {
           );
         const histories = [];
         for (const row of rows) {
-          const grant = guest.data?.find((g) => g.event_id === row.id);
-          let seat: string | undefined;
-          if (grant) {
-            const { data } = await db
-              .from("bourbon_guest_access")
-              .select("participant_id")
-              .eq("event_id", row.id)
-              .eq("auth_user_id", a.id)
-              .maybeSingle();
-            seat = data?.participant_id;
-          }
+          const seat = guest.data?.find(
+            (g) => g.event_id === row.id,
+          )?.participant_id;
           const actor = { ...a, guestParticipantId: seat };
           if (!authorized(row.state as Event, actor)) continue;
           const result = historyFor(row.state as Event, actor);
@@ -224,6 +267,53 @@ Deno.serve(async (req: Request) => {
     if (error) throw new Error("The database could not be reached.");
     if (!data) return json({ error: "Event not found." }, 404);
     const event = data.state as Event;
+    if (input.action === "delete") {
+      if (!canDeleteEvent(event.ownerId, a.id, communityProfile))
+        return json(
+          {
+            error:
+              "Only this event’s host or the community owner can delete it.",
+          },
+          403,
+        );
+      if (
+        input.confirmed !== true ||
+        input.title !== event.title ||
+        !Number.isInteger(input.revision)
+      )
+        return json(
+          { error: "Confirm the named event before deleting it." },
+          400,
+        );
+      if (input.revision !== event.revision)
+        return json(
+          {
+            error:
+              "This event changed. Review the updated event and confirm deletion again.",
+          },
+          409,
+        );
+      const { data: removed, error: deleteError } = await db.rpc(
+        "delete_bourbon_event",
+        {
+          p_id: event.id,
+          p_actor: a.id,
+          p_revision: input.revision,
+          p_title: input.title,
+        },
+      );
+      if (deleteError)
+        throw new Error("The event could not be deleted. Please try again.");
+      if (!removed)
+        return json(
+          {
+            error:
+              "The event or your permissions changed. Refresh Events and confirm again.",
+          },
+          409,
+        );
+      return json({ deleted: true, id: event.id });
+    }
     const { data: guestAccess, error: guestError } = await db
       .from("bourbon_guest_access")
       .select("participant_id")

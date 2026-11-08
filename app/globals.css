@@ -740,3 +740,71 @@ textarea {
   background: transparent;
   color: var(--ink);
 }
+
+.home-navigation .event-link {
+  width: 100%;
+  margin-bottom: 24px;
+}
+.event-filters {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 16px;
+}
+.managed-event {
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.managed-event h3 {
+  margin: 8px 0;
+}
+.managed-event .actions {
+  justify-content: space-between;
+  align-items: center;
+}
+.event-open {
+  font-weight: 700;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.danger {
+  background: #8b2626;
+  color: white;
+}
+.danger-outline {
+  color: #8b2626 !important;
+  border-color: #8b2626 !important;
+}
+.delete-dialog {
+  width: calc(100% - 32px);
+  max-width: 540px;
+  max-height: 90vh;
+  overflow: auto;
+  margin: auto;
+  border: 1px solid var(--line);
+}
+.delete-dialog::backdrop {
+  background: #142c25bb;
+}
+.delete-dialog .delete-event-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.delete-dialog .actions {
+  margin-top: 24px;
+}
+.events-page h1 {
+  margin-bottom: 18px;
+}
+@media (max-width: 600px) {
+  .event-filters {
+    grid-template-columns: 1fr;
+  }
+  .events-page > .row-between {
+    align-items: center;
+  }
+  .events-page > .row-between > a {
+    white-space: nowrap;
+  }
+}
