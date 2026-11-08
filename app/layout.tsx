@@ -3,7 +3,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Blindcap",
   description:
-    "Two to sixteen bottles. One Yorktown Tumbler. A blind tasting among friends.",
+    "Build your own blind competition. Invite your group, compare anonymous entries and reveal the winner with Blindcap.",
   robots: { index: false, follow: false },
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -15,16 +15,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <span className="seal">
               B<span>CAP</span>
             </span>
-            <span>
-              BLINDCAP<small>TRUST YOUR TASTE</small>
-            </span>
+            <span>BLINDCAP</span>
           </a>
-          <span className="header-note">GOOD COMPANY. GREAT SPIRITS.</span>
         </header>
         {children}
-        <footer>
-          BLINDCAP <span>Enjoy the evening. Sip responsibly.</span>
-        </footer>
+        <footer>BLINDCAP</footer>
       </body>
     </html>
   );

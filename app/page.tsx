@@ -61,21 +61,39 @@ export default function Home() {
   return (
     <main>
       <section className="hero">
-        <p className="eyebrow">THE PRIVATE BLINDCAP COMMUNITY</p>
+        <p className="eyebrow">BLIND COMPETITION</p>
         <h1>
-          Your bottles.
-          <br />
-          One <em>Tumbler.</em>
+          {user ? (
+            <>
+              Your next
+              <br />
+              <em>event.</em>
+            </>
+          ) : (
+            <>
+              Mystery meets
+              <br />
+              <em>competition.</em>
+            </>
+          )}
         </h1>
         <p className="intro">
-          Leave the labels behind.
-          <br />
-          Let your palate pick the winner.
+          <strong>
+            {user ? "Bring your group. Keep the mystery." : "One winner."}
+          </strong>
         </p>
+        {!user && (
+          <p className="intro">
+            Blindcap brings people together for blind comparisons and friendly
+            competition. Build your own event, invite your group, and keep the
+            entries anonymous. Everyone scores and ranks their favorites before
+            the reveal crowns a winner.
+          </p>
+        )}
         <div className="hero-rule">
-          <span>2–16 TASTERS</span>
-          <span>HOST OR PARTICIPATE</span>
-          <span>100% BLIND</span>
+          <span>BUILD YOUR EVENT</span>
+          <span>COMPARE BLIND</span>
+          <span>REVEAL THE WINNER</span>
         </div>
       </section>
       <section className="panel welcome">
@@ -85,7 +103,7 @@ export default function Home() {
             ? `Welcome, ${self.profile!.displayName}.`
             : user
               ? "Welcome back."
-              : "The night starts here."}
+              : "Your next event starts here."}
         </h2>
         {!configured ? (
           <p>The tasting room is being prepared.</p>
@@ -209,8 +227,8 @@ export default function Home() {
         ) : (
           <>
             <p className="muted">
-              Private community. Sign in to host an event or accept an
-              invitation.
+              Sign in to host an event or accept an invitation. New here? Create
+              a profile below.
             </p>
             <form
               onSubmit={(e) => {
@@ -324,25 +342,23 @@ export default function Home() {
       {member && <CommunityDashboard owner={self.profile!.role === "owner"} />}
       <section className="how">
         <div>
-          <span>01 / HOST</span>
-          <h3>Your night, your rules.</h3>
+          <span>01 / CREATE</span>
+          <h3>Build your own event.</h3>
           <p>
-            Every approved member can create a private event and invite other
-            members.
+            Name your event, invite your group and keep the entries anonymous.
           </p>
         </div>
         <div>
-          <span>02 / TASTE</span>
-          <h3>Trust your own palate.</h3>
-          <p>
-            Score each pour and rank your favorites. Preference leads the way.
-          </p>
+          <span>02 / COMPARE</span>
+          <h3>Make your own call.</h3>
+          <p>Score and rank each entry before its identity is revealed.</p>
         </div>
         <div>
-          <span>03 / REMEMBER</span>
-          <h3>Keep your tasting story.</h3>
+          <span>03 / REVEAL</span>
+          <h3>Celebrate the winner.</h3>
           <p>
-            Your own ballots, bottles and results stay in your private history.
+            Reveal the results, compare your favorites and revisit your own
+            rankings.
           </p>
         </div>
       </section>
