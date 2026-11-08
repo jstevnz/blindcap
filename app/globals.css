@@ -76,34 +76,16 @@ select:focus-visible {
   letter-spacing: 3px;
   line-height: 1.1;
 }
-.masthead small {
+.masthead .brand-logo {
   display: block;
-  font-size: 10px;
-  letter-spacing: 3.3px;
-  margin-top: 7px;
+  width: 240px;
+  max-width: 100%;
+  height: auto;
 }
-.seal {
-  border: 1px solid var(--gold);
-  width: 48px;
-  height: 52px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--gold);
-  font:
-    25px Georgia,
-    serif;
-  letter-spacing: 0;
-}
-.seal span {
-  font-size: 10px;
-  letter-spacing: 2px;
-}
-.header-note {
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: var(--muted);
+@media (max-width: 600px) {
+  .masthead .brand-logo {
+    width: 200px;
+  }
 }
 main {
   max-width: 1200px;

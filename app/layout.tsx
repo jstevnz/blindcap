@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import "./globals.css";
 export const metadata: Metadata = {
   title: "Blindcap",
@@ -12,10 +13,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <body>
         <header className="masthead">
           <a href="/" aria-label="Blindcap home">
-            <span className="seal">
-              B<span>CAP</span>
-            </span>
-            <span>BLINDCAP</span>
+            <Image
+              src="/brand/blindcap-logo-v1.png"
+              alt="Blindcap"
+              width={1635}
+              height={962}
+              sizes="(max-width: 600px) 200px, 240px"
+              className="brand-logo"
+              preload
+            />
           </a>
         </header>
         {children}
