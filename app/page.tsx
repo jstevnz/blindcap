@@ -23,7 +23,7 @@ export default function Home() {
     [mode, setMode] = useState<"password" | "email-login" | "recover">(
       "password",
     ),
-    [title, setTitle] = useState("Yorktown Bourbon Night"),
+    [title, setTitle] = useState(""),
     [count, setCount] = useState(12),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -140,16 +140,17 @@ export default function Home() {
                 }}
               >
                 <label>
-                  Host a new event
+                  Name a new event
                   <input
                     value={title}
+                    placeholder="Enter an event name"
                     maxLength={100}
                     onChange={(e) => setTitle(e.target.value)}
                     required
                   />
                 </label>
                 <label>
-                  Number of tasters
+                  Number of tasters / bottles
                   <select
                     value={count}
                     onChange={(e) => setCount(Number(e.target.value))}
