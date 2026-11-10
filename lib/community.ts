@@ -2,6 +2,7 @@ import type { Event, Actor } from "./engine";
 import { snapshot } from "./engine";
 export type Profile = {
   avatar_path?: string | null;
+  mailing_address?: Record<string,string>;
   full_name?: string;
   phone?: string;
   location?: string;
@@ -57,7 +58,20 @@ export function privateProfileFields(
     throw new Error("Enter a valid phone number, up to 30 characters.");
   if (location.length > 120)
     throw new Error("Keep city/state under 120 characters.");
-  return { full_name, phone, location };
+  let mailing_address: Record<string,string> | undefined;
+  if (Object.prototype.hasOwnProperty.call(input,"mailingAddress")) {
+    const address=input.mailingAddress;
+    if(!address || typeof address!=="object" || Array.isArray(address)) throw new Error("Enter a valid mailing address.");
+    mailing_address={};
+    for(const [key,max] of Object.entries({line1:150,line2:150,city:100,region:100,postalCode:30,country:100})) {
+      const raw=(address as Record<string,unknown>)[key];
+      if(raw!==undefined && typeof raw!=="string") throw new Error("Address fields must be text.");
+      const value=String(raw??"").trim().replace(/\s+/g," ");
+      if(value.length>max) throw new Error(`Keep ${key} under ${max} characters.`);
+      mailing_address[key]=value;
+    }
+  }
+  return { full_name, phone, location, ...(mailing_address ? {mailing_address} : {}) };
 }
 export function checkPassword(value: unknown): asserts value is string {
   if (typeof value !== "string" || value.length < 12 || value.length > 128)

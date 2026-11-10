@@ -1,0 +1,11 @@
+# Mailing addresses and event co-admins
+
+Profiles and signup add an optional structured mailing address: street, apartment/suite, city, state/province, postal code and country. Existing location text remains stored. Legacy profile saves that omit mailingAddress preserve any saved address. Searchable profiles, event snapshots and series archives never include addresses.
+
+Event admins explicitly load a private mailing list from Host controls. Addresses are returned only for active profiles attached to accepted member invitations, or approved profiles associated with redeemed guest seats. Pending invitations show confirmation status but no address. No unrelated profile addresses are queried. Confirmed rows can be downloaded as CSV; fields escape quotes and spreadsheet formulas. Nothing is emailed automatically. Profile forms explain the confirmed-event host access.
+
+Primary hosts and the site owner can appoint up to eight approved co-admins, with revision protection and a confirmation explaining the permissions. Co-admins can manage setup, invitations, scoring and reveal, and load the confirmed mailing list. They cannot delegate, change event ownership or delete the event. Removing a co-admin removes its permissions on the next request. Admin membership does not create a taster seat or permit voting without a seat, and does not grant series management rights.
+
+The additive migration adds a backend-only profile JSON address column and an indexed event admin_ids lookup, synchronized transactionally from event state. Existing event JSON, ballots and ownership remain unchanged during migration. No public table grants, address-sharing policies, Auth grants or external messages are added.
+
+Checks: migration rehearsal, private profile filtering, accepted-versus-pending address filtering, non-admin rejection, co-admin discovery and host operations, delegation rejection, removal, CSV safety, full test suite, frontend/backend typechecks and production build. Deployment order: additive schema, authenticated bourbon-api backend, exact tested GitHub source and Vercel production build. Live UI checks must not populate real addresses, grant another person admin access or export participant addresses without user direction.

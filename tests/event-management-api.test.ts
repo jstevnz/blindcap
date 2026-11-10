@@ -87,6 +87,16 @@ globalThis.fetch = async (input, init) => {
       : table === "bourbon_events"
         ? events
         : [];
+  const or = u.searchParams.get("or");
+  if (or) {
+    const own = or.match(/owner_id\.eq\.([^,)]+)/)?.[1];
+    const admin = or.match(/admin_ids\.cs\.\{([^}]+)\}/)?.[1];
+    rows = rows.filter(
+      (r) =>
+        r.owner_id === own ||
+        (r.admin_ids as string[] | undefined)?.includes(admin ?? ""),
+    );
+  }
   for (const [key, value] of u.searchParams) {
     if (value.startsWith("eq."))
       rows = rows.filter((row) => row[key] === value.slice(3));
@@ -255,5 +265,51 @@ test("managed non-guest identities without a profile cannot gain event access du
   } finally {
     profiles.splice(index, 0, saved);
     managed = false;
+  }
+});
+
+test("co-admin event discovery and host controls work without allowing team delegation", async () => {
+  ea.adminIds = [b.id];
+  Object.assign(events[0], { admin_ids: [b.id] });
+  try {
+    const catalog = await call(b, { action: "catalog" });
+    assert.equal(catalog.status, 200);
+    assert.ok(
+      catalog.data.events.some(
+        (e: { id: string; canOpen: boolean }) => e.id === ea.id && e.canOpen,
+      ),
+    );
+    const view = await call(b, { action: "get", id: ea.id });
+    assert.equal(view.status, 200);
+    assert.equal(view.data.admin, true);
+    const team = await call(b, { action: "team", id: ea.id });
+    assert.equal(team.status, 200);
+    assert.equal(team.data.canManage, false);
+    const denied = await call(b, {
+      action: "team-set",
+      id: ea.id,
+      revision: ea.revision,
+      adminIds: [c.id],
+    });
+    assert.notEqual(denied.status, 200);
+    assert.match(denied.data.error, /primary host/);
+    const owner = await call(a, {
+      action: "team-set",
+      id: ea.id,
+      revision: ea.revision,
+      adminIds: [c.id],
+    });
+    assert.equal(owner.status, 200);
+    assert.deepEqual(
+      rpcs.find((x) => x.name === "save_bourbon_community_event")?.args
+        .p_state && (rpcs[0].args.p_state as { adminIds: string[] }).adminIds,
+      [c.id],
+    );
+    const mailing = await call(c, { action: "mailing-list", id: ea.id });
+    assert.notEqual(mailing.status, 200);
+    assert.match(mailing.data.error, /Only this event/);
+  } finally {
+    delete ea.adminIds;
+    Object.assign(events[0], { admin_ids: [] });
   }
 });

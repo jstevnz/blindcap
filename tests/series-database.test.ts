@@ -58,6 +58,15 @@ test("series migration preserves event state, rejects public access, and atomica
         "utf8",
       ),
     );
+    await db.exec(
+      await readFile(
+        new URL(
+          "../supabase/migrations/20261110024409_mailing_addresses_and_coadmins.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
     assert.deepEqual(
       (await db.query<{ state: unknown }>("select state from bourbon_events"))
         .rows[0].state,
@@ -132,6 +141,34 @@ test("series migration preserves event state, rejects public access, and atomica
         )
       ).rows.length,
       1,
+    );
+    const prior = (
+      await db.query<{ state: Record<string, unknown> }>(
+        "select state from bourbon_events where id=$1",
+        [event.id],
+      )
+    ).rows[0].state;
+    await db.query(
+      "update bourbon_events set state=$2,revision=2 where id=$1",
+      [event.id, JSON.stringify({ ...prior, revision: 2, adminIds: [coord] })],
+    );
+    assert.deepEqual(
+      (
+        await db.query<{ admin_ids: string[] }>(
+          "select admin_ids from bourbon_events where id=$1",
+          [event.id],
+        )
+      ).rows[0].admin_ids,
+      [coord],
+    );
+    assert.deepEqual(
+      (
+        await db.query<{ mailing_address: unknown }>(
+          "select mailing_address from bourbon_profiles where id=$1",
+          [owner],
+        )
+      ).rows[0].mailing_address,
+      {},
     );
     await db.exec("set role anon");
     await assert.rejects(db.query("select * from bourbon_series"));

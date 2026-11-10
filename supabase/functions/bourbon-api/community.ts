@@ -299,6 +299,7 @@ export async function communityAction(
             fullName: p.full_name ?? "",
             phone: p.phone ?? "",
             location: p.location ?? "",
+            mailingAddress: p.mailing_address ?? {},
             discoverable: p.discoverable,
             role: p.role,
             status: p.status,

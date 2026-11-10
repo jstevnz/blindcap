@@ -50,7 +50,8 @@ export async function seriesAction(
         .eq("auth_user_id", a.id),
     ]);
   check(ie || ge);
-  const ids = [...(invites ?? []), ...(grants ?? [])].map((x) => x.event_id);
+  const {data:adminEvents,error:adminError}=await db.from("bourbon_events").select("id").contains("admin_ids",[a.id]);check(adminError);
+  const ids = [...(invites ?? []), ...(grants ?? [])].map((x) => x.event_id).concat((adminEvents??[]).map(x=>x.id));
   const linked = ids.length
     ? await db.from("bourbon_editions").select("series_id").in("event_id", ids)
     : { data: [], error: null };

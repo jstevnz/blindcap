@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import ProfilePhoto from "@/app/components/ProfilePhoto";
 import ProfileAchievements from "@/app/components/ProfileAchievements";
 import { request, browser } from "@/lib/browser";
+import MailingAddressFields, {
+  type MailingAddress,
+} from "@/app/components/MailingAddress";
 export default function Account() {
   const [p, setProfile] = useState<{
       avatarUrl?: string | null;
@@ -10,6 +13,7 @@ export default function Account() {
       fullName: string;
       phone: string;
       location: string;
+      mailingAddress: MailingAddress;
       username: string;
       displayName: string;
       bio: string;
@@ -96,16 +100,12 @@ export default function Account() {
                   maxLength={30}
                 />
               </label>
-              <label>
-                City / state (optional)
-                <input
-                  value={p.location}
-                  onChange={(e) =>
-                    setProfile({ ...p, location: e.target.value })
-                  }
-                  maxLength={120}
-                />
-              </label>
+              <MailingAddressFields
+                value={p.mailingAddress ?? {}}
+                onChange={(mailingAddress) =>
+                  setProfile({ ...p, mailingAddress })
+                }
+              />
               <label>
                 Username
                 <input

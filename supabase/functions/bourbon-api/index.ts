@@ -1,3 +1,4 @@
+import {canManageTeam,setCoAdmins,eventTeam,mailingList} from "./event-team.ts";
 import {seriesLogoUrl} from "./series-logos.ts";
 import { seriesAction } from "./series.ts";
 import { photoAction } from "./photos.ts";
@@ -11,6 +12,7 @@ import {
   createEvent,
   snapshot,
   authorized,
+  isEventAdmin,
   type Event,
   type Actor,
 } from "./engine.ts";
@@ -160,7 +162,7 @@ Deno.serve(async (req: Request) => {
           : db
               .from("bourbon_events")
               .select("id,state,created_at")
-              .eq("owner_id", a.id),
+              .or(`owner_id.eq.${a.id},admin_ids.cs.{${a.id}}`),
         db
           .from("bourbon_events")
           .select("id,state,created_at")
@@ -256,7 +258,7 @@ Deno.serve(async (req: Request) => {
         rows
           .filter(
             (x) =>
-              x.state.ownerId === a.id ||
+              isEventAdmin(x.state as Event,a) ||
               guest.data?.some((g) => g.event_id === x.id) ||
               authorized(x.state as Event, a),
           )
@@ -264,7 +266,7 @@ Deno.serve(async (req: Request) => {
             id: x.id,
             title: x.state.title,
             phase: x.state.phase,
-            admin: x.state.ownerId === a.id,
+            admin: isEventAdmin(x.state as Event,a),
           })),
       );
     }
@@ -300,6 +302,18 @@ Deno.serve(async (req: Request) => {
     if (error) throw new Error("The database could not be reached.");
     if (!data) return json({ error: "Event not found." }, 404);
     const event = data.state as Event;
+    if(input.action === "team") return json(await eventTeam(db,event,a,communityProfile));
+    if(input.action === "team-set") {
+      const next=setCoAdmins(event,a,communityProfile,input.adminIds,input.revision);
+      if(next.adminIds?.length) {
+        const {data:profiles,error}=await db.from("bourbon_profiles").select("id").in("id",next.adminIds).eq("status","active");
+        if(error||profiles?.length!==next.adminIds.length) throw new Error("Select approved community members as co-admins.");
+      }
+      const {data:saved,error}=await db.rpc("save_bourbon_community_event",{p_id:event.id,p_revision:event.revision,p_state:next,p_member_emails:next.participants.map(p=>p.email).filter(Boolean)});
+      if(error||!saved) throw new Error("The event changed or could not be saved. Refresh and try again.");
+      return json({saved:true});
+    }
+    if(input.action === "mailing-list") return json(await mailingList(db,event,a));
     if (input.action === "delete") {
       if (!canDeleteEvent(event.ownerId, a.id, communityProfile))
         return json(
@@ -368,7 +382,7 @@ Deno.serve(async (req: Request) => {
         ...snapshot(event, a),
         series:series ? {id:series.id,title:series.title,year:edition!.year,logoUrl:await seriesLogoUrl(db,series.logo_path),winnerAward:series.winner_award,swillAward:series.swill_award} : null,
         memberInvitations:
-          event.ownerId === a.id
+          isEventAdmin(event,a)
             ? (memberInvites ?? []).map((i) => ({
                 participantId: i.participant_id,
                 status: i.status,
@@ -377,7 +391,7 @@ Deno.serve(async (req: Request) => {
       });
     }
     if (input.action === "invite") {
-      if (event.ownerId !== a.id)
+      if (!isEventAdmin(event,a))
         return json(
           { error: "Only the event admin can issue invitations." },
           403,
@@ -410,7 +424,7 @@ Deno.serve(async (req: Request) => {
       return json({ token });
     }
     if (input.action === "invite-details") {
-      if (event.ownerId !== a.id)
+      if (!isEventAdmin(event,a))
         return json(
           { error: "Only the event admin can email invitations." },
           403,
@@ -453,7 +467,7 @@ Deno.serve(async (req: Request) => {
       });
     }
     if (input.action === "member-email-details") {
-      if (event.ownerId !== a.id)
+      if (!isEventAdmin(event,a))
         return json(
           { error: "Only the event host can email member invitations." },
           403,
@@ -496,7 +510,7 @@ Deno.serve(async (req: Request) => {
         409,
       );
     if (c.type === "setup") {
-      if (event.ownerId !== a.id)
+      if (!isEventAdmin(event,a))
         return json(
           { error: "Only the event host can set up participants." },
           403,

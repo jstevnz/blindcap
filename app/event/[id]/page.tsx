@@ -2,6 +2,7 @@
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import type { Snapshot, Entry, Command } from "@/lib/engine";
 import MemberPicker from "@/app/components/MemberPicker";
+import EventTeam from "@/app/components/EventTeam";
 import Awards from "@/app/components/Awards";
 import { request } from "@/lib/browser";
 type Row = {
@@ -142,7 +143,13 @@ export default function EventPage({
           <p className="eyebrow">
             {e.admin ? "THE HOST’S TABLE" : "YOUR SEAT AT THE TABLE"}
           </p>
-          {e.series?.logoUrl && <img className="series-logo" src={e.series.logoUrl} alt={`${e.series.title} logo`}/>}
+          {e.series?.logoUrl && (
+            <img
+              className="series-logo"
+              src={e.series.logoUrl}
+              alt={`${e.series.title} logo`}
+            />
+          )}
           <h1>{e.title}</h1>
           {e.series && (
             <p>
@@ -283,6 +290,7 @@ export default function EventPage({
       )}
       {tab === "host" && e.admin && (
         <>
+          <EventTeam id={id} onChanged={load} />
           {e.phase === "setup" ? (
             <section className="panel">
               <p className="eyebrow">BEFORE THE FIRST POUR</p>

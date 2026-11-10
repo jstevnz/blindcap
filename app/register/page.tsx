@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { request, browser } from "@/lib/browser";
+import MailingAddressFields, {
+  type MailingAddress,
+} from "@/app/components/MailingAddress";
 export default function Register() {
   const [token, setToken] = useState(""),
     [email, setEmail] = useState(""),
@@ -9,6 +12,7 @@ export default function Register() {
     [name, setName] = useState(""),
     [phone, setPhone] = useState(""),
     [locationText, setLocation] = useState(""),
+    [mailingAddress, setMailingAddress] = useState<MailingAddress>({}),
     [bio, setBio] = useState(""),
     [password, setPassword] = useState(""),
     [website, setWebsite] = useState(""),
@@ -49,6 +53,7 @@ export default function Register() {
         fullName,
         phone,
         location: locationText,
+        mailingAddress,
         bio,
         password,
         website,
@@ -161,15 +166,10 @@ export default function Register() {
                 maxLength={30}
               />
             </label>
-            <label>
-              City / state (optional)
-              <input
-                autoComplete="address-level2"
-                value={locationText}
-                onChange={(e) => setLocation(e.target.value)}
-                maxLength={120}
-              />
-            </label>
+            <MailingAddressFields
+              value={mailingAddress}
+              onChange={setMailingAddress}
+            />
             <label>
               About your tastes (optional)
               <textarea

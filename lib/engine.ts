@@ -36,6 +36,7 @@ export type Group = {
   runoffKey?: string;
 };
 export type Event = {
+  adminIds?: string[];
   id: string;
   title: string;
   tasterCount?: number;
@@ -96,8 +97,11 @@ export function member(e: Event, a: Actor) {
       : !p.accountId && p.email.toLowerCase() === a.email.toLowerCase(),
   );
 }
+export function isEventAdmin(e: Event, a: Actor) {
+  return e.ownerId === a.id || !!e.adminIds?.includes(a.id);
+}
 export function authorized(e: Event, a: Actor) {
-  return e.ownerId === a.id || !!member(e, a);
+  return isEventAdmin(e,a) || !!member(e, a);
 }
 export function shuffle<T>(input: T[]): T[] {
   const a = [...input];
@@ -349,7 +353,7 @@ export type Command = { type: string; [key: string]: unknown };
 export function applyCommand(original: Event, actor: Actor, c: Command): Event {
   assert(authorized(original, actor), "You are not invited to this event.");
   const e = structuredClone(original);
-  const admin = e.ownerId === actor.id;
+  const admin = isEventAdmin(e, actor);
   const count = eventSize(e);
   e.tasterCount = count;
   if (c.type === "ballot") {
@@ -556,7 +560,7 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
 }
 export function snapshot(e: Event, a: Actor) {
   assert(authorized(e, a), "You are not invited to this event.");
-  const admin = e.ownerId === a.id;
+  const admin = isEventAdmin(e, a);
   const p = member(e, a);
   const visibleResults =
     (admin || e.revealed) && e.phase === "complete" ? results(e) : null;

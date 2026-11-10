@@ -67,6 +67,10 @@ function fixture() {
       this.filters.push((r) => v.includes(r[k]));
       return this;
     }
+    contains(k: string, values: unknown[]) {
+      this.filters.push((r) => values.every((v) => (r[k] ?? []).includes(v)));
+      return this;
+    }
     order() {
       return this;
     }
