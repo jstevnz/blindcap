@@ -4,6 +4,8 @@ export type Profile = {
   avatar_path?: string | null;
   mailing_address?: Record<string,string>;
   full_name?: string;
+  first_name?: string | null;
+  last_name?: string | null;
   phone?: string;
   location?: string;
   approved_at?: string | null;
@@ -45,7 +47,15 @@ export function privateProfileFields(
   input: Record<string, unknown>,
   required = false,
 ) {
-  const full_name = String(input.fullName ?? "")
+  const separated = "firstName" in input || "lastName" in input;
+  const normalizeName=(value:unknown)=>{
+    if(value!==undefined && typeof value!=="string")throw new Error("Names must be text.");
+    return String(value??"").trim().replace(/\s+/g," ");
+  };
+  const first_name=separated?normalizeName(input.firstName):undefined;
+  const last_name=separated?normalizeName(input.lastName):undefined;
+  if(separated&&required&&(!first_name||!last_name))throw new Error("Enter your first name and last name.");
+  const full_name = String(separated ? [first_name,last_name].filter(Boolean).join(" ") : input.fullName ?? "")
       .trim()
       .replace(/\s+/g, " "),
     phone = String(input.phone ?? "").trim(),
@@ -71,7 +81,7 @@ export function privateProfileFields(
       mailing_address[key]=value;
     }
   }
-  return { full_name, phone, location, ...(mailing_address ? {mailing_address} : {}) };
+  return { full_name, phone, location, ...(separated?{first_name,last_name}:{}), ...(mailing_address ? {mailing_address} : {}) };
 }
 export function checkPassword(value: unknown): asserts value is string {
   if (typeof value !== "string" || value.length < 12 || value.length > 128)

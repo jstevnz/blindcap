@@ -159,3 +159,38 @@ test("CSV exports confirmed participants only and neutralizes spreadsheet formul
   assert.ok(!csv.includes("SECRET"));
   assert.ok(csv.includes("00123"));
 });
+
+test("separate first and last names preserve compound names and the combined mailing name", () => {
+  const fields = privateProfileFields(
+    { firstName: " Mary Ann ", lastName: " van Buren " },
+    true,
+  );
+  assert.equal(fields.first_name, "Mary Ann");
+  assert.equal(fields.last_name, "van Buren");
+  assert.equal(fields.full_name, "Mary Ann van Buren");
+  assert.throws(
+    () => privateProfileFields({ firstName: "First", lastName: "" }, true),
+    /first name and last name/,
+  );
+  assert.throws(
+    () => privateProfileFields({ firstName: {}, lastName: "Last" }),
+    /text/,
+  );
+  assert.throws(
+    () =>
+      privateProfileFields({ firstName: "x".repeat(101), lastName: "Last" }),
+    /100 characters/,
+  );
+  assert.equal(
+    privateProfileFields({ fullName: "Legacy Name" }).full_name,
+    "Legacy Name",
+  );
+  const p = {
+    ...profile,
+    first_name: "Private First",
+    last_name: "Private Last",
+    full_name: "Private First Private Last",
+  };
+  const visible = JSON.stringify(publicProfile(p));
+  assert.ok(!visible.includes("Private"));
+});

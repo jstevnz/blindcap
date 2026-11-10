@@ -11,6 +11,8 @@ export default function Account() {
       avatarUrl?: string | null;
       status: string;
       fullName: string;
+      firstName: string;
+      lastName: string;
       phone: string;
       location: string;
       mailingAddress: MailingAddress;
@@ -80,14 +82,25 @@ export default function Account() {
                 <input value={p.email} readOnly />
               </label>
               <label>
-                Full name
+                First name
                 <input
-                  autoComplete="name"
-                  value={p.fullName}
-                  onChange={(e) =>
-                    setProfile({ ...p, fullName: e.target.value })
-                  }
+                  autoComplete="given-name"
+                  value={p.firstName ?? ""}
                   maxLength={100}
+                  onChange={(e) =>
+                    setProfile({ ...p, firstName: e.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Last name
+                <input
+                  autoComplete="family-name"
+                  value={p.lastName ?? ""}
+                  maxLength={100}
+                  onChange={(e) =>
+                    setProfile({ ...p, lastName: e.target.value })
+                  }
                 />
               </label>
               <label>

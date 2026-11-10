@@ -8,7 +8,8 @@ export default function Register() {
   const [token, setToken] = useState(""),
     [email, setEmail] = useState(""),
     [username, setUsername] = useState(""),
-    [fullName, setFullName] = useState(""),
+    [firstName, setFirstName] = useState(""),
+    [lastName, setLastName] = useState(""),
     [name, setName] = useState(""),
     [phone, setPhone] = useState(""),
     [locationText, setLocation] = useState(""),
@@ -50,7 +51,8 @@ export default function Register() {
         email,
         username,
         displayName: name,
-        fullName,
+        firstName,
+        lastName,
         phone,
         location: locationText,
         mailingAddress,
@@ -110,13 +112,23 @@ export default function Register() {
               />
             </label>
             <label>
-              Full name
+              First name
               <input
-                autoComplete="name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                maxLength={100}
                 required
+                autoComplete="given-name"
+                value={firstName}
+                maxLength={100}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+            </label>
+            <label>
+              Last name
+              <input
+                required
+                autoComplete="family-name"
+                value={lastName}
+                maxLength={100}
+                onChange={(e) => setLastName(e.target.value)}
               />
             </label>
             <label>

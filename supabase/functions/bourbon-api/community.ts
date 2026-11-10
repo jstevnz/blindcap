@@ -297,6 +297,8 @@ export async function communityAction(
             avatarUrl: await avatarUrl(db,p.avatar_path),
             email: p.email,
             fullName: p.full_name ?? "",
+            firstName: p.first_name ?? (p.full_name ?? "").trim().split(/\s+/)[0] ?? "",
+            lastName: p.last_name ?? (p.full_name ?? "").trim().split(/\s+/).slice(1).join(" "),
             phone: p.phone ?? "",
             location: p.location ?? "",
             mailingAddress: p.mailing_address ?? {},
