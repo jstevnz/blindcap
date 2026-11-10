@@ -123,7 +123,7 @@ export default function Events() {
         <a href="/">← Home</a>
       </div>
       <p>Your invitations, events and annual series, together in one place.</p>
-      <div className="actions section-navigation"><a className="button" href="/events?create=1">Create an Event</a><a href="/account#tasting-history">My history & awards →</a></div>
+      <div className="actions section-navigation"><a className="button" href="/events?create=1">Create an Event</a><a href="/events/history">My history & awards →</a></div>
       {error && (
         <p className="error" role="alert">
           {error}
