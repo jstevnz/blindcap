@@ -1,6 +1,7 @@
 import type { Event, Actor } from "./engine.ts";
 import { snapshot } from "./engine.ts";
 export type Profile = {
+  avatar_path?: string | null;
   full_name?: string;
   phone?: string;
   location?: string;

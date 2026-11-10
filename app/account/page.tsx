@@ -1,8 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import ProfilePhoto from "@/app/components/ProfilePhoto";
+import ProfileAchievements from "@/app/components/ProfileAchievements";
 import { request, browser } from "@/lib/browser";
 export default function Account() {
   const [p, setProfile] = useState<{
+      avatarUrl?: string | null;
       status: string;
       fullName: string;
       phone: string;
@@ -53,6 +56,8 @@ export default function Account() {
               not grant event access.
             </p>
           )}
+          <ProfilePhoto name={p.displayName} initialUrl={p.avatarUrl} />
+          {p.status === "active" && <ProfileAchievements />}
           <section className="panel">
             <form
               onSubmit={(e) => {

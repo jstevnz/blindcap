@@ -11,6 +11,9 @@ export type Participant = {
 export type Bottle = {
   id: string;
   number: number;
+  distillery?: string;
+  proof?: number;
+  abv?: number;
   name: string;
   ownerId: string;
 };
@@ -432,7 +435,7 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
           email: p.email.trim().toLowerCase(),
           ...(p.accountId?{accountId:p.accountId}:{}),
         }));
-        const bs = c.bottles as { name: string; ownerIndex: number }[];
+        const bs = c.bottles as { name: string; ownerIndex: number; distillery?: string; proof?: number | string }[];
         assert(
           bs.every(
             (b) =>
@@ -445,10 +448,16 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
           ) && new Set(bs.map((b) => b.ownerIndex)).size === count,
           "Each taster must own exactly one named bottle.",
         );
+        for (const b of bs) {
+          assert(b.distillery === undefined || (typeof b.distillery === "string" && b.distillery.length <= 150), "Keep distillery under 150 characters.");
+          assert(b.proof === undefined || b.proof === "" || ((typeof b.proof === "number" || typeof b.proof === "string") && Number.isFinite(Number(b.proof)) && Number(b.proof) > 0 && Number(b.proof) <= 200), "Proof must be greater than 0 and no more than 200.");
+        }
         e.bottles = bs.map((b, i) => ({
           id: randomUUID(),
           number: i + 1,
           name: b.name.trim(),
+          ...(b.distillery?.trim() ? {distillery:b.distillery.trim()} : {}),
+          ...(b.proof !== undefined && b.proof !== "" ? {proof:Number(b.proof), abv:Number(b.proof)/2} : {}),
           ownerId: e.participants[b.ownerIndex].id,
         }));
         break;
@@ -553,6 +562,7 @@ export function snapshot(e: Event, a: Actor) {
     (admin || e.revealed) && e.phase === "complete" ? results(e) : null;
   return {
     id: e.id,
+    series: null as {id:string;title:string;year:number;winnerAward:string;swillAward:string}|null,
     title: e.title,
     tasterCount: eventSize(e),
     plan: tournamentPlan(eventSize(e)),

@@ -1,3 +1,5 @@
+import { seriesAction } from "./series.ts";
+import { photoAction } from "./photos.ts";
 import { canDeleteEvent, eventSummary } from "./event-management.ts";
 import { communityAction, getProfile, rate } from "./community.ts";
 import { historyFor } from "./community-shared.ts";
@@ -101,6 +103,11 @@ Deno.serve(async (req: Request) => {
         throw new Error(
           "Unable to assign your seat. Ask your host for a replacement link.",
         );
+      const { data: edition } = await db.from("bourbon_editions").select("series_id").eq("event_id", invite.event_id).maybeSingle();
+      if (edition) {
+        const { error } = await db.from("bourbon_series_members").upsert({series_id:edition.series_id,user_id:link.user.id});
+        if(error) throw new Error("Unable to assign series history access.");
+      }
       return json({
         tokenHash: link.properties.hashed_token,
         eventId: invite.event_id,
@@ -115,6 +122,9 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Please sign in with your verified email." }, 401);
     const a: Actor = { id: auth.user.id, email: auth.user.email.toLowerCase() };
 
+    if (input.action === "community" && String(input.operation).startsWith("photo-"))
+      return json(await photoAction(input, db, a));
+    if (input.action === "series") return json(await seriesAction(input, db, a));
     if (input.action === "community")
       return json(await communityAction(input, db, a, req));
     const communityProfile = await getProfile(db, a.id);
@@ -351,8 +361,11 @@ Deno.serve(async (req: Request) => {
         .from("bourbon_member_invites")
         .select("participant_id,status")
         .eq("event_id", event.id);
+      const {data:edition} = await db.from("bourbon_editions").select("series_id,year").eq("event_id",event.id).maybeSingle();
+      const series = edition ? (await db.from("bourbon_series").select("id,title,winner_award,swill_award").eq("id",edition.series_id).single()).data : null;
       return json({
         ...snapshot(event, a),
+        series:series ? {id:series.id,title:series.title,year:edition!.year,winnerAward:series.winner_award,swillAward:series.swill_award} : null,
         memberInvitations:
           event.ownerId === a.id
             ? (memberInvites ?? []).map((i) => ({

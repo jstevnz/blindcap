@@ -1,3 +1,4 @@
+import { avatarUrl } from "./photos.ts";
 import { deletePendingApplication } from "./pending-deletion.ts";
 import { applyForMembership, notifyOwner } from "./applications.ts";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -293,6 +294,7 @@ export async function communityAction(
       profile: p
         ? {
             ...publicProfile(p),
+            avatarUrl: await avatarUrl(db,p.avatar_path),
             email: p.email,
             fullName: p.full_name ?? "",
             phone: p.phone ?? "",
@@ -367,7 +369,7 @@ export async function communityAction(
       .or(`username.ilike.${pattern},display_name.ilike.${pattern}`)
       .limit(10);
     if (error) throw new Error("Unable to search community profiles.");
-    return { profiles: (data ?? []).map((x) => publicProfile(x as Profile)) };
+    return { profiles: await Promise.all((data ?? []).map(async (x) => ({...publicProfile(x as Profile),avatarUrl:await avatarUrl(db,x.avatar_path)}))) };
   }
   if (op === "invitations") {
     const { data, error } = await db

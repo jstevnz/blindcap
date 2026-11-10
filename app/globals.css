@@ -798,3 +798,9 @@ textarea {
   height: 1px;
   overflow: hidden;
 }
+
+.profile-avatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; display: inline-flex; flex-shrink: 0; vertical-align: middle; }
+.profile-avatar.initials { align-items: center; justify-content: center; background: var(--green, #173f33); color: #fff; font-size: 24px; letter-spacing: 1px; }
+.search-result .profile-avatar { width: 32px; height: 32px; margin-right: 10px; font-size: 13px; }
+.edition { padding: 24px 0; border-top: 1px solid var(--line, #d8d2c5); }
+.edition h3 { margin-bottom: 8px; }

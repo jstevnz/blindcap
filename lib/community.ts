@@ -1,6 +1,7 @@
 import type { Event, Actor } from "./engine";
 import { snapshot } from "./engine";
 export type Profile = {
+  avatar_path?: string | null;
   full_name?: string;
   phone?: string;
   location?: string;

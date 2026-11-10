@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { request } from "@/lib/browser";
+import Avatar from "./Avatar";
 type Member = {
+  avatarUrl?: string | null;
   id: string;
   username: string;
   displayName: string;
@@ -77,6 +79,7 @@ export default function MemberPicker({
                 setMembers([]);
               }}
             >
+              <Avatar name={p.displayName} url={p.avatarUrl} />
               {p.displayName} <small>@{p.username}</small>
             </button>
           ))}

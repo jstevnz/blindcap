@@ -4,7 +4,14 @@ import type { Snapshot, Entry, Command } from "@/lib/engine";
 import MemberPicker from "@/app/components/MemberPicker";
 import Awards from "@/app/components/Awards";
 import { request } from "@/lib/browser";
-type Row = { name: string; email: string; bottle: string; accountId?: string };
+type Row = {
+  distillery?: string;
+  proof?: string;
+  name: string;
+  email: string;
+  bottle: string;
+  accountId?: string;
+};
 const blank = (count = 12): Row[] =>
   Array.from({ length: count }, () => ({ name: "", email: "", bottle: "" }));
 export default function EventPage({
@@ -39,6 +46,20 @@ export default function EventPage({
               "accountId" in p && typeof p.accountId === "string"
                 ? p.accountId
                 : undefined,
+            distillery: (() => {
+              const b = data.bottles.find(
+                (b) => "ownerId" in b && b.ownerId === p.id,
+              );
+              return b && "distillery" in b ? (b.distillery ?? "") : "";
+            })(),
+            proof: (() => {
+              const b = data.bottles.find(
+                (b) => "ownerId" in b && b.ownerId === p.id,
+              );
+              return b && "proof" in b && b.proof !== undefined
+                ? String(b.proof)
+                : "";
+            })(),
             bottle: (() => {
               const b = data.bottles.find(
                 (b) => "ownerId" in b && b.ownerId === p.id,
@@ -122,6 +143,13 @@ export default function EventPage({
             {e.admin ? "THE HOST’S TABLE" : "YOUR SEAT AT THE TABLE"}
           </p>
           <h1>{e.title}</h1>
+          {e.series && (
+            <p>
+              <a href={`/series?id=${e.series.id}`}>
+                {e.series.title}: annual history & leaderboard →
+              </a>
+            </p>
+          )}
           {e.participantId && (
             <p className="muted">
               Tasting as{" "}
@@ -289,6 +317,8 @@ export default function EventPage({
                     })),
                     bottles: rows.map((r, i) => ({
                       name: r.bottle,
+                      distillery: r.distillery,
+                      proof: r.proof,
                       ownerIndex: i,
                     })),
                   });
@@ -358,6 +388,42 @@ export default function EventPage({
                           />
                         </label>
                       ))}
+                      <label>
+                        Distillery (optional)
+                        <input
+                          maxLength={150}
+                          value={r.distillery ?? ""}
+                          onChange={(ev) =>
+                            setRows(
+                              rows.map((x, j) =>
+                                j === i
+                                  ? { ...x, distillery: ev.target.value }
+                                  : x,
+                              ),
+                            )
+                          }
+                        />
+                      </label>
+                      <label>
+                        Proof (optional)
+                        <input
+                          type="number"
+                          min="0.1"
+                          max="200"
+                          step="any"
+                          value={r.proof ?? ""}
+                          onChange={(ev) =>
+                            setRows(
+                              rows.map((x, j) =>
+                                j === i ? { ...x, proof: ev.target.value } : x,
+                              ),
+                            )
+                          }
+                        />
+                      </label>
+                      {r.proof && (
+                        <p className="fine">ABV: {Number(r.proof) / 2}%</p>
+                      )}
                     </fieldset>
                   ))}
                 </div>
@@ -713,7 +779,27 @@ export default function EventPage({
                   reveal.
                 </p>
               )}
-              <Awards results={e.results} label={label} />
+              <Awards
+                results={e.results}
+                label={label}
+                winnerAward={e.series?.winnerAward}
+                swillAward={e.series?.swillAward}
+              />
+              <section className="panel">
+                <h2>The bottles</h2>
+                {e.bottles.map(
+                  (b) =>
+                    "name" in b && (
+                      <p key={b.id}>
+                        <strong>{b.name}</strong>
+                        {b.distillery ? ` · ${b.distillery}` : ""}
+                        {b.proof
+                          ? ` · ${b.proof} proof · ${b.proof / 2}% ABV`
+                          : ""}
+                      </p>
+                    ),
+                )}
+              </section>
               {myBottle && ownResult && (
                 <section className="panel">
                   <p className="eyebrow">YOUR BOTTLE’S NIGHT</p>

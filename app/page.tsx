@@ -120,6 +120,10 @@ export default function Home() {
             )}
             {member ? (
               <div className="actions home-navigation">
+                <a className="event-link" href="/series">
+                  <strong>Event series</strong>
+                  <span>Annual history & leaderboards →</span>
+                </a>
                 <a className="event-link" href="/events">
                   <strong>Events</strong>
                   <span>View & manage →</span>
@@ -169,7 +173,7 @@ export default function Home() {
                 }}
               >
                 <label>
-                  Name a new event
+                  Name a new one-time event
                   <input
                     value={title}
                     placeholder="Enter an event name"

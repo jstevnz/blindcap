@@ -81,6 +81,10 @@ export default function Register() {
           approval. Approved members can host events and be found by hosts for
           future invitations.
         </p>
+        <p className="fine">
+          Profile photos are optional. You can add one in your profile after
+          confirming your email.
+        </p>
         {!submitted && (
           <form
             onSubmit={(e) => {
@@ -187,8 +191,12 @@ export default function Register() {
               </label>
             </div>
             <p className="fine">
-              Your full name, phone and city/state are private to you and the reviewing administrator. Your email is used for sign-in and event invitations and may be seen by your event host. Member searches show only your username, display name and tasting notes after approval.
-          </p>
+              Your full name, phone and city/state are private to you and the
+              reviewing administrator. Your email is used for sign-in and event
+              invitations and may be seen by your event host. Member searches
+              show only your username, display name and tasting notes after
+              approval.
+            </p>
             <button disabled={busy || !email}>
               {busy ? "Saving your signup…" : "Submit signup"}
             </button>

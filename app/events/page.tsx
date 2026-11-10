@@ -82,6 +82,11 @@ export default function Events() {
         <a href="/">← Home</a>
       </div>
       <p>
+        <a href="/series">
+          Browse event series, annual history & leaderboards →
+        </a>
+      </p>
+      <p>
         {catalog?.communityOwner
           ? "You can see and delete every community event."
           : "Open your events and review your history. You can delete only events you created and host."}
