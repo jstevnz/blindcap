@@ -2,6 +2,8 @@
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import type { Snapshot, Entry, Command } from "@/lib/engine";
 import MemberPicker from "@/app/components/MemberPicker";
+import ParticipantEnrollment from "@/app/components/ParticipantEnrollment";
+import EventWelcome from "@/app/components/EventWelcome";
 import EventTeam from "@/app/components/EventTeam";
 import Awards from "@/app/components/Awards";
 import { request } from "@/lib/browser";
@@ -34,6 +36,8 @@ export default function EventPage({
   const initialized = useRef(false);
   const load = useCallback(async () => {
     const data: Snapshot = await request(`/api/events/${id}`);
+    if (!initialized.current && data.admin && data.workflowVersion === 2)
+      setTab("host");
     setEvent((prev) => (!prev || data.revision >= prev.revision ? data : prev));
     if (!initialized.current && data.admin) {
       initialized.current = true;
@@ -131,6 +135,8 @@ export default function EventPage({
         )}
       </main>
     );
+  if (e.workflowVersion === 2 && !e.admin && e.phase === "setup")
+    return <EventWelcome id={id} />;
   const current = e.groups.find((g) => g.status === "open");
   const myBottle = e.bottles.find(
     (b) => "ownerId" in b && b.ownerId === e.participantId,
@@ -221,7 +227,10 @@ export default function EventPage({
                   ? "The host is setting the table."
                   : e.phase === "complete"
                     ? "The ballots are in."
-                    : "A moment between pours."}
+                    : e.workflowVersion === 2 &&
+                        e.groups.every((g) => g.status === "waiting")
+                      ? "The event is ready to begin."
+                      : "A moment between pours."}
             </h2>
             <p>
               {current
@@ -251,7 +260,9 @@ export default function EventPage({
               participantId={e.participantId}
               busy={busy}
               send={send}
-              bottleNumber={(bid) => bottle(bid)?.number ?? 0}
+              bottleNumber={(bid) =>
+                current.cupNumbers?.[bid] ?? bottle(bid)?.number ?? 0
+              }
             />
           ) : current ? (
             <p className="panel">
@@ -307,163 +318,177 @@ export default function EventPage({
       {tab === "host" && e.admin && (
         <>
           <EventTeam id={id} onChanged={load} />
+          {e.workflowVersion === 2 && (
+            <ParticipantEnrollment
+              e={e}
+              send={send}
+              refresh={load}
+              busy={busy}
+            />
+          )}
           {e.phase === "setup" ? (
-            <section className="panel">
-              <p className="eyebrow">BEFORE THE FIRST POUR</p>
-              <h2>Set the table for {e.tasterCount}.</h2>
-              <p className="notice">
-                {e.plan.opening.length
-                  ? `Opening groups: ${e.plan.opening.join(" + ")} → `
-                  : ""}
-                {e.plan.semifinal.length
-                  ? `Semifinals: ${e.plan.semifinal.join(" + ")} → `
-                  : ""}
-                {e.plan.final === 2
-                  ? "Head-to-head final"
-                  : `Final of ${e.plan.final}`}
-                .
-              </p>
-              <p>
-                Each row pairs a taster with the bottle they brought. Search for
-                a community profile, or enter a guest. Guest emails are
-                optional. If you are tasting, select your own community profile
-                on your row. Bottle numbers follow row order; wrap and label
-                each bottle before tasting.
-              </p>
-              <form
-                onSubmit={(ev) => {
-                  ev.preventDefault();
-                  send({
-                    type: "setup",
-                    participants: rows.map((r) => ({
-                      name: r.name,
-                      email: r.email,
-                      ...(r.accountId ? { accountId: r.accountId } : {}),
-                    })),
-                    bottles: rows.map((r, i) => ({
-                      name: r.bottle,
-                      distillery: r.distillery,
-                      proof: r.proof,
-                      ownerIndex: i,
-                    })),
-                  });
-                }}
-              >
-                <div className="setup-grid">
-                  {rows.map((r, i) => (
-                    <fieldset key={i}>
-                      <legend>BOTTLE {String(i + 1).padStart(2, "0")}</legend>
-                      <MemberPicker
-                        selected={
-                          r.accountId
-                            ? { id: r.accountId, name: r.name }
-                            : undefined
-                        }
-                        onSelect={(p) =>
-                          setRows((current) =>
-                            current.map((x, j) =>
-                              j === i
-                                ? {
-                                    ...x,
-                                    name: p.displayName,
-                                    email: "",
-                                    accountId: p.id,
-                                  }
-                                : x,
-                            ),
-                          )
-                        }
-                        onClear={() =>
-                          setRows((current) =>
-                            current.map((x, j) =>
-                              j === i
-                                ? {
-                                    ...x,
-                                    name: "",
-                                    email: "",
-                                    accountId: undefined,
-                                  }
-                                : x,
-                            ),
-                          )
-                        }
-                      />
-                      {(["name", "email", "bottle"] as const).map((k) => (
-                        <label key={k}>
-                          {k === "name"
-                            ? "Taster"
-                            : k === "email"
-                              ? "Email (optional)"
-                              : "Bourbon name"}
-                          <input
-                            type={k === "email" ? "email" : "text"}
-                            maxLength={
-                              k === "bottle" ? 150 : k === "email" ? 254 : 100
-                            }
-                            disabled={!!r.accountId && k !== "bottle"}
-                            value={r[k]}
-                            required={k !== "email"}
-                            onChange={(ev) =>
-                              setRows(
-                                rows.map((x, j) =>
-                                  j === i ? { ...x, [k]: ev.target.value } : x,
-                                ),
-                              )
-                            }
-                          />
-                        </label>
-                      ))}
-                      <label>
-                        Distillery (optional)
-                        <input
-                          maxLength={150}
-                          value={r.distillery ?? ""}
-                          onChange={(ev) =>
-                            setRows(
-                              rows.map((x, j) =>
+            e.workflowVersion === 2 ? null : (
+              <section className="panel">
+                <p className="eyebrow">BEFORE THE FIRST POUR</p>
+                <h2>Set the table for {e.tasterCount}.</h2>
+                <p className="notice">
+                  {e.plan.opening.length
+                    ? `Opening groups: ${e.plan.opening.join(" + ")} → `
+                    : ""}
+                  {e.plan.semifinal.length
+                    ? `Semifinals: ${e.plan.semifinal.join(" + ")} → `
+                    : ""}
+                  {e.plan.final === 2
+                    ? "Head-to-head final"
+                    : `Final of ${e.plan.final}`}
+                  .
+                </p>
+                <p>
+                  Each row pairs a taster with the bottle they brought. Search
+                  for a community profile, or enter a guest. Guest emails are
+                  optional. If you are tasting, select your own community
+                  profile on your row. Bottle numbers follow row order; wrap and
+                  label each bottle before tasting.
+                </p>
+                <form
+                  onSubmit={(ev) => {
+                    ev.preventDefault();
+                    send({
+                      type: "setup",
+                      participants: rows.map((r) => ({
+                        name: r.name,
+                        email: r.email,
+                        ...(r.accountId ? { accountId: r.accountId } : {}),
+                      })),
+                      bottles: rows.map((r, i) => ({
+                        name: r.bottle,
+                        distillery: r.distillery,
+                        proof: r.proof,
+                        ownerIndex: i,
+                      })),
+                    });
+                  }}
+                >
+                  <div className="setup-grid">
+                    {rows.map((r, i) => (
+                      <fieldset key={i}>
+                        <legend>BOTTLE {String(i + 1).padStart(2, "0")}</legend>
+                        <MemberPicker
+                          selected={
+                            r.accountId
+                              ? { id: r.accountId, name: r.name }
+                              : undefined
+                          }
+                          onSelect={(p) =>
+                            setRows((current) =>
+                              current.map((x, j) =>
                                 j === i
-                                  ? { ...x, distillery: ev.target.value }
+                                  ? {
+                                      ...x,
+                                      name: p.displayName,
+                                      email: "",
+                                      accountId: p.id,
+                                    }
+                                  : x,
+                              ),
+                            )
+                          }
+                          onClear={() =>
+                            setRows((current) =>
+                              current.map((x, j) =>
+                                j === i
+                                  ? {
+                                      ...x,
+                                      name: "",
+                                      email: "",
+                                      accountId: undefined,
+                                    }
                                   : x,
                               ),
                             )
                           }
                         />
-                      </label>
-                      <label>
-                        Proof (optional)
-                        <input
-                          type="number"
-                          min="0.1"
-                          max="200"
-                          step="any"
-                          value={r.proof ?? ""}
-                          onChange={(ev) =>
-                            setRows(
-                              rows.map((x, j) =>
-                                j === i ? { ...x, proof: ev.target.value } : x,
-                              ),
-                            )
-                          }
-                        />
-                      </label>
-                      {r.proof && (
-                        <p className="fine">ABV: {Number(r.proof) / 2}%</p>
-                      )}
-                    </fieldset>
-                  ))}
-                </div>
-                <button disabled={busy}>Save participants & bottles</button>
-              </form>
-              {e.bottles.length === e.tasterCount && (
-                <button
-                  className="secondary"
-                  disabled={busy}
-                  onClick={() => setConfirm({ type: "start" })}
-                >
-                  Lock setup & draw tournament →
-                </button>
-              )}
-            </section>
+                        {(["name", "email", "bottle"] as const).map((k) => (
+                          <label key={k}>
+                            {k === "name"
+                              ? "Taster"
+                              : k === "email"
+                                ? "Email (optional)"
+                                : "Bourbon name"}
+                            <input
+                              type={k === "email" ? "email" : "text"}
+                              maxLength={
+                                k === "bottle" ? 150 : k === "email" ? 254 : 100
+                              }
+                              disabled={!!r.accountId && k !== "bottle"}
+                              value={r[k]}
+                              required={k !== "email"}
+                              onChange={(ev) =>
+                                setRows(
+                                  rows.map((x, j) =>
+                                    j === i
+                                      ? { ...x, [k]: ev.target.value }
+                                      : x,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                        ))}
+                        <label>
+                          Distillery (optional)
+                          <input
+                            maxLength={150}
+                            value={r.distillery ?? ""}
+                            onChange={(ev) =>
+                              setRows(
+                                rows.map((x, j) =>
+                                  j === i
+                                    ? { ...x, distillery: ev.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          Proof (optional)
+                          <input
+                            type="number"
+                            min="0.1"
+                            max="200"
+                            step="any"
+                            value={r.proof ?? ""}
+                            onChange={(ev) =>
+                              setRows(
+                                rows.map((x, j) =>
+                                  j === i
+                                    ? { ...x, proof: ev.target.value }
+                                    : x,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                        {r.proof && (
+                          <p className="fine">ABV: {Number(r.proof) / 2}%</p>
+                        )}
+                      </fieldset>
+                    ))}
+                  </div>
+                  <button disabled={busy}>Save participants & bottles</button>
+                </form>
+                {e.bottles.length === e.tasterCount && (
+                  <button
+                    className="secondary"
+                    disabled={busy}
+                    onClick={() => setConfirm({ type: "start" })}
+                  >
+                    Lock setup & draw tournament →
+                  </button>
+                )}
+              </section>
+            )
           ) : (
             <>
               <section className="panel">
@@ -535,12 +560,36 @@ export default function EventPage({
                       </span>
                     ))}
                   </div>
+                  {g.pourGuide && (
+                    <section className="pour-sheet">
+                      <h3>Private pour sheet</h3>
+                      <p>
+                        Keep bottles and this sheet out of sight. Wrap and label
+                        each bottle with its bottle number. Use identical cups
+                        and equal pours. Give every taster the same numbered
+                        cups for this flight and judge every cup.
+                      </p>
+                      <ol>
+                        {g.pourGuide.map((row) => (
+                          <li key={row.cup}>
+                            <strong>Cup {row.cup}</strong> ← covered bottle{" "}
+                            {row.bottleNumber}: {row.name} · {row.owner}
+                          </li>
+                        ))}
+                      </ol>
+                      <p className="fine">
+                        Cup numbers are freshly randomized for each flight,
+                        including later rounds. Do not reuse an earlier pour
+                        sheet.
+                      </p>
+                    </section>
+                  )}
                   {g.status === "waiting" && (
                     <button
                       disabled={busy || !!current}
                       onClick={() => send({ type: "open", groupId: g.id })}
                     >
-                      Open this flight
+                      Begin this flight
                     </button>
                   )}
                   {g.status === "open" && (
@@ -583,178 +632,49 @@ export default function EventPage({
               ))}
             </>
           )}
-          <section className="panel">
-            <h3>Private guest invitations</h3>
-            <p>
-              Each link signs in one assigned taster. Links expire after 72
-              hours and work once. Share each link privately. A replacement
-              invalidates the previous unused link and, once redeemed, replaces
-              that seat’s earlier guest access.
-            </p>
-            {e.phase === "setup" ? (
+          {e.workflowVersion !== 2 && (
+            <section className="panel">
+              <h3>Private guest invitations</h3>
               <p>
-                Save your participants and lock the draw before creating
-                invitations.
+                Each link signs in one assigned taster. Links expire after 72
+                hours and work once. Share each link privately. A replacement
+                invalidates the previous unused link and, once redeemed,
+                replaces that seat’s earlier guest access.
               </p>
-            ) : (
-              e.participants.map((p) =>
-                "accountId" in p && p.accountId ? (
-                  <div className="invite-row" key={p.id}>
-                    <strong>{p.name}</strong>
-                    <p>
-                      Community member ·{" "}
-                      {e.memberInvitations.find((i) => i.participantId === p.id)
-                        ?.status ?? "pending"}
-                    </p>
-                    <p>
-                      They can sign in and accept this event from their own
-                      dashboard.
-                    </p>
-                    {(e.memberInvitations.find((i) => i.participantId === p.id)
-                      ?.status ?? "pending") === "pending" && (
-                      <button
-                        disabled={busy}
-                        onClick={async () => {
-                          setBusy(true);
-                          setError("");
-                          try {
-                            await request(`/api/events/${id}/members/email`, {
-                              participantId: p.id,
-                            });
-                            setNotice(
-                              `Event invitation accepted for emailing to ${p.name}.`,
-                            );
-                          } catch (x) {
-                            setError((x as Error).message);
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
-                      >
-                        Email event invitation
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="invite-row" key={p.id}>
-                    <strong>{p.name}</strong>
-                    <label>
-                      Invitation email
-                      <input
-                        type="email"
-                        maxLength={254}
-                        value={
-                          deliveryEmails[p.id] ??
-                          ("invitationEmail" in p
-                            ? String(p.invitationEmail)
-                            : "email" in p
-                              ? String(p.email)
-                              : "")
-                        }
-                        onChange={(ev) =>
-                          setDeliveryEmails((values) => ({
-                            ...values,
-                            [p.id]: ev.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                    <button
-                      className="secondary"
-                      disabled={busy || !deliveryEmails[p.id]?.trim()}
-                      onClick={() =>
-                        send({
-                          type: "delivery-email",
-                          participantId: p.id,
-                          email: deliveryEmails[p.id],
-                        })
-                      }
-                    >
-                      Save email address
-                    </button>
-                    <div className="actions">
-                      <button
-                        className="secondary"
-                        disabled={busy}
-                        onClick={async () => {
-                          setBusy(true);
-                          setError("");
-                          try {
-                            const data = await request(
-                              `/api/events/${id}/invitations`,
-                              { participantId: p.id },
-                            );
-                            setInviteLinks((links) => ({
-                              ...links,
-                              [p.id]: `${location.origin}/join#invite=${data.token}`,
-                            }));
-                            setNotice(
-                              `Invitation created for ${p.name}. Copy it and share privately.`,
-                            );
-                          } catch (x) {
-                            setError((x as Error).message);
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
-                      >
-                        {inviteLinks[p.id]
-                          ? "Replace link"
-                          : "Create private link"}
-                      </button>
-                      {inviteLinks[p.id] && (
+              {e.phase === "setup" ? (
+                <p>
+                  Save your participants and lock the draw before creating
+                  invitations.
+                </p>
+              ) : (
+                e.participants.map((p) =>
+                  "accountId" in p && p.accountId ? (
+                    <div className="invite-row" key={p.id}>
+                      <strong>{p.name}</strong>
+                      <p>
+                        Community member ·{" "}
+                        {e.memberInvitations.find(
+                          (i) => i.participantId === p.id,
+                        )?.status ?? "pending"}
+                      </p>
+                      <p>
+                        They can sign in and accept this event from their own
+                        dashboard.
+                      </p>
+                      {(e.memberInvitations.find(
+                        (i) => i.participantId === p.id,
+                      )?.status ?? "pending") === "pending" && (
                         <button
-                          onClick={() =>
-                            navigator.clipboard
-                              .writeText(inviteLinks[p.id])
-                              .then(() =>
-                                setNotice(`Private link for ${p.name} copied.`),
-                              )
-                              .catch(() =>
-                                setError("Select the link below and copy it."),
-                              )
-                          }
-                        >
-                          Copy link
-                        </button>
-                      )}
-                      {inviteLinks[p.id] && (
-                        <button
-                          disabled={
-                            busy ||
-                            !("invitationEmail" in p
-                              ? p.invitationEmail
-                              : "email" in p
-                                ? p.email
-                                : "") ||
-                            emailed[p.id] === inviteLinks[p.id] ||
-                            !!(
-                              deliveryEmails[p.id] !== undefined &&
-                              deliveryEmails[p.id].trim().toLowerCase() !==
-                                ("invitationEmail" in p
-                                  ? p.invitationEmail
-                                  : "email" in p
-                                    ? p.email
-                                    : "")
-                            )
-                          }
+                          disabled={busy}
                           onClick={async () => {
                             setBusy(true);
                             setError("");
                             try {
-                              const token = new URL(
-                                inviteLinks[p.id],
-                              ).hash.slice("#invite=".length);
-                              const result = await request(
-                                `/api/events/${id}/invitations/email`,
-                                { participantId: p.id, token },
-                              );
-                              setEmailed((sent) => ({
-                                ...sent,
-                                [p.id]: inviteLinks[p.id],
-                              }));
+                              await request(`/api/events/${id}/members/email`, {
+                                participantId: p.id,
+                              });
                               setNotice(
-                                `Invitation accepted for sending to ${result.email}. Check Resend for delivery status.`,
+                                `Event invitation accepted for emailing to ${p.name}.`,
                               );
                             } catch (x) {
                               setError((x as Error).message);
@@ -763,25 +683,162 @@ export default function EventPage({
                             }
                           }}
                         >
-                          {emailed[p.id] === inviteLinks[p.id]
-                            ? "Invitation emailed"
-                            : "Email invitation"}
+                          Email event invitation
                         </button>
                       )}
                     </div>
-                    {inviteLinks[p.id] && (
-                      <input
-                        aria-label={`Private invitation for ${p.name}`}
-                        value={inviteLinks[p.id]}
-                        readOnly
-                        onFocus={(ev) => ev.target.select()}
-                      />
-                    )}
-                  </div>
-                ),
-              )
-            )}
-          </section>
+                  ) : (
+                    <div className="invite-row" key={p.id}>
+                      <strong>{p.name}</strong>
+                      <label>
+                        Invitation email
+                        <input
+                          type="email"
+                          maxLength={254}
+                          value={
+                            deliveryEmails[p.id] ??
+                            ("invitationEmail" in p
+                              ? String(p.invitationEmail)
+                              : "email" in p
+                                ? String(p.email)
+                                : "")
+                          }
+                          onChange={(ev) =>
+                            setDeliveryEmails((values) => ({
+                              ...values,
+                              [p.id]: ev.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                      <button
+                        className="secondary"
+                        disabled={busy || !deliveryEmails[p.id]?.trim()}
+                        onClick={() =>
+                          send({
+                            type: "delivery-email",
+                            participantId: p.id,
+                            email: deliveryEmails[p.id],
+                          })
+                        }
+                      >
+                        Save email address
+                      </button>
+                      <div className="actions">
+                        <button
+                          className="secondary"
+                          disabled={busy}
+                          onClick={async () => {
+                            setBusy(true);
+                            setError("");
+                            try {
+                              const data = await request(
+                                `/api/events/${id}/invitations`,
+                                { participantId: p.id },
+                              );
+                              setInviteLinks((links) => ({
+                                ...links,
+                                [p.id]: `${location.origin}/join#invite=${data.token}`,
+                              }));
+                              setNotice(
+                                `Invitation created for ${p.name}. Copy it and share privately.`,
+                              );
+                            } catch (x) {
+                              setError((x as Error).message);
+                            } finally {
+                              setBusy(false);
+                            }
+                          }}
+                        >
+                          {inviteLinks[p.id]
+                            ? "Replace link"
+                            : "Create private link"}
+                        </button>
+                        {inviteLinks[p.id] && (
+                          <button
+                            onClick={() =>
+                              navigator.clipboard
+                                .writeText(inviteLinks[p.id])
+                                .then(() =>
+                                  setNotice(
+                                    `Private link for ${p.name} copied.`,
+                                  ),
+                                )
+                                .catch(() =>
+                                  setError(
+                                    "Select the link below and copy it.",
+                                  ),
+                                )
+                            }
+                          >
+                            Copy link
+                          </button>
+                        )}
+                        {inviteLinks[p.id] && (
+                          <button
+                            disabled={
+                              busy ||
+                              !("invitationEmail" in p
+                                ? p.invitationEmail
+                                : "email" in p
+                                  ? p.email
+                                  : "") ||
+                              emailed[p.id] === inviteLinks[p.id] ||
+                              !!(
+                                deliveryEmails[p.id] !== undefined &&
+                                deliveryEmails[p.id].trim().toLowerCase() !==
+                                  ("invitationEmail" in p
+                                    ? p.invitationEmail
+                                    : "email" in p
+                                      ? p.email
+                                      : "")
+                              )
+                            }
+                            onClick={async () => {
+                              setBusy(true);
+                              setError("");
+                              try {
+                                const token = new URL(
+                                  inviteLinks[p.id],
+                                ).hash.slice("#invite=".length);
+                                const result = await request(
+                                  `/api/events/${id}/invitations/email`,
+                                  { participantId: p.id, token },
+                                );
+                                setEmailed((sent) => ({
+                                  ...sent,
+                                  [p.id]: inviteLinks[p.id],
+                                }));
+                                setNotice(
+                                  `Invitation accepted for sending to ${result.email}. Check Resend for delivery status.`,
+                                );
+                              } catch (x) {
+                                setError((x as Error).message);
+                              } finally {
+                                setBusy(false);
+                              }
+                            }}
+                          >
+                            {emailed[p.id] === inviteLinks[p.id]
+                              ? "Invitation emailed"
+                              : "Email invitation"}
+                          </button>
+                        )}
+                      </div>
+                      {inviteLinks[p.id] && (
+                        <input
+                          aria-label={`Private invitation for ${p.name}`}
+                          value={inviteLinks[p.id]}
+                          readOnly
+                          onFocus={(ev) => ev.target.select()}
+                        />
+                      )}
+                    </div>
+                  ),
+                )
+              )}
+            </section>
+          )}
         </>
       )}
       {tab === "results" && (

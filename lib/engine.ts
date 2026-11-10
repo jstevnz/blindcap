@@ -4,6 +4,9 @@ import { tournamentPlan, validCount } from "./tournament.ts";
 import { randomInt, randomUUID } from "node:crypto";
 export type Stage = "opening" | "semifinal" | "final";
 export type Participant = {
+  slot?: number;
+  firstName?: string;
+  lastName?: string;
   id: string;
   name: string;
   email: string;
@@ -29,6 +32,8 @@ export type Entry = {
 };
 export type Ballot = { participantId: string; entries: Entry[] };
 export type Group = {
+  cupNumbers?: Record<string,number>;
+  publicIds?: Record<string,string>;
   id: string;
   name: string;
   stage: Stage;
@@ -38,6 +43,8 @@ export type Group = {
   runoffKey?: string;
 };
 export type Event = {
+  workflowVersion?: 2;
+  rosterInvited?: boolean;
   blindParticipantIds?: string[];
   blindUnlockedIds?: string[];
   blindAccessLog?: {actorId:string;action:"lock"|"unlock";at:string}[];
@@ -103,7 +110,7 @@ export function member(e: Event, a: Actor) {
   return e.participants.find((p) =>
     a.guestParticipantId
       ? p.id === a.guestParticipantId
-      : !p.accountId && p.email.toLowerCase() === a.email.toLowerCase(),
+      : e.workflowVersion===2 ? false : !p.accountId && p.email.toLowerCase() === a.email.toLowerCase(),
   );
 }
 export function isEventAdmin(e: Event, a: Actor) {
@@ -121,7 +128,10 @@ export function shuffle<T>(input: T[]): T[] {
   return a;
 }
 function group(stage: Stage, index: number, ids: string[]): Group {
+  const order=shuffle(ids);
   return {
+    cupNumbers:Object.fromEntries(order.map((id,i)=>[id,i+1])),
+    publicIds:Object.fromEntries(ids.map(id=>[id,randomUUID()])),
     id: randomUUID(),
     name: `${stage === "opening" ? "Opening" : stage === "semifinal" ? "Semifinal" : "Final"} ${index + 1}`,
     stage,
@@ -364,12 +374,30 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
   const e = structuredClone(original);
   const admin = isEventAdmin(e, actor);
   const count = eventSize(e);
+  if(c.type==="bottle-entry") {
+    assert(e.workflowVersion===2&&(e.phase==="setup"||(admin&&e.groups.length>0&&e.groups.every(g=>g.status==="waiting"))),"Bottle details lock when tasting begins.");
+    const seat=admin?e.participants.find(p=>p.id===c.participantId):member(e,actor);
+    assert(seat && (admin||!c.participantId||c.participantId===seat.id),"You can edit only your own bottle.");
+    const name=String(c.name??"").trim(),distillery=String(c.distillery??"").trim(),proof=Number(c.proof);
+    assert(name.length>0&&name.length<=150&&distillery.length>0&&distillery.length<=150&&Number.isFinite(proof)&&proof>0&&proof<=200,"Enter bottle name, distillery and proof (greater than 0 and no more than 200).");
+    const previous=e.bottles.find(b=>b.ownerId===seat.id);
+    e.bottles=e.bottles.filter(b=>b.ownerId!==seat.id);
+    e.bottles.push({id:previous?.id??randomUUID(),ownerId:seat.id,number:(seat.slot??e.participants.indexOf(seat))+1,name,distillery,proof,abv:proof/2});
+    e.revision++;return e;
+  }
+
   e.tasterCount = count;
   if (c.type === "ballot") {
     const p = member(e, actor);
     assert(p, "Only registered tasters can submit a ballot.");
     const g = e.groups.find((g) => g.id === c.groupId);
     assert(g?.status === "open", "This tasting group is not open.");
+    if(e.workflowVersion===2&&!admin&&!e.revealed&&Array.isArray(c.entries)) {
+      c={...c,entries:(c.entries as Entry[]).map(x=>{
+        const real=Object.entries(g.publicIds??{}).find(([,alias])=>alias===x.bottleId)?.[0];
+        assert(real,"This cup does not belong to the current flight.");return {...x,bottleId:real};
+      })};
+    }
     assert(
       Array.isArray(c.entries) && c.entries.length === g.bottleIds.length,
       "Rank and score every bottle.",
@@ -410,6 +438,21 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
   } else {
     assert(admin, "Only the event admin can do that.");
     switch (c.type) {
+      case "roster-seat": {
+        assert(e.workflowVersion===2&&e.phase==="setup","The participant list is locked after event preparation.");
+        const slot=Number(c.slot);assert(Number.isInteger(slot)&&slot>=0&&slot<count,"Choose a valid participant slot.");
+        const firstName=String(c.firstName??"").trim(),lastName=String(c.lastName??"").trim(),email=String(c.email??"").trim().toLowerCase(),accountId=typeof c.accountId==="string"?c.accountId:undefined;
+        assert(firstName&&(accountId||lastName)&&(firstName+" "+lastName).length<=100&&email.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),"Enter first name, last name and a valid email address.");
+        assert(!accountId||/^[0-9a-f-]{36}$/i.test(accountId),"Choose a valid profile.");
+        assert(!e.participants.some(p=>p.slot!==slot&&(p.email===email||(accountId&&p.accountId===accountId))),"This participant already has a seat.");
+        const previous=e.participants.find(p=>p.slot===slot),same=previous&&previous.email===email&&previous.accountId===accountId;
+        const id=same?previous.id:randomUUID();e.participants=e.participants.filter(p=>p.slot!==slot);
+        e.participants.push({id,slot,name:(firstName+" "+lastName).trim(),firstName,lastName,email,...(accountId?{accountId}:{})});e.participants.sort((a,b)=>(a.slot??0)-(b.slot??0));
+        if(previous&&!same)e.bottles=e.bottles.filter(b=>b.ownerId!==previous.id);
+        break;
+      }
+      case "invite-roster":
+        assert(e.workflowVersion===2&&e.phase==="setup"&&e.participants.length===count,"Save every participant before sending invitations.");e.rosterInvited=true;break;
       case "setup": {
         assert(e.phase === "setup", "Setup is locked after the draw.");
         assert(
@@ -494,6 +537,7 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
           e.phase === "setup" && e.bottles.length === count,
           `Save all ${count} tasters and bottles first.`,
         );
+        if(e.workflowVersion===2)assert(e.rosterInvited&&e.participants.length===count&&e.participants.every(p=>p.accountId)&&e.bottles.every(b=>b.name&&b.distillery&&b.proof),"Every participant must join and complete their bottle before preparation.");
         const plan = tournamentPlan(count),
           ids = shuffle(e.bottles.map((b) => b.id));
         let offset = 0;
@@ -571,10 +615,15 @@ export function snapshot(e: Event, a: Actor) {
   assert(authorized(e, a), "You are not invited to this event.");
   const admin = isEventAdmin(e, a);
   const p = member(e, a);
+  const hiddenCups=e.workflowVersion===2&&!admin&&!e.revealed;
+  const ownBottle=e.bottles.find(b=>b.ownerId===p?.id);
   const visibleResults =
     (admin || e.revealed) && e.phase === "complete" ? results(e) : null;
   return {
     id: e.id,
+    workflowVersion:e.workflowVersion,
+    rosterInvited:!!e.rosterInvited,
+    ownBottle:e.workflowVersion===2&&ownBottle?{name:ownBottle.name,distillery:ownBottle.distillery??"",proof:ownBottle.proof??null}:null,
     series: null as {id:string;title:string;year:number;logoUrl?:string|null;winnerAward:string;swillAward:string}|null,
     title: e.title,
     eventType:eventTypeFor(e),
@@ -590,19 +639,21 @@ export function snapshot(e: Event, a: Actor) {
     participants: admin
       ? e.participants
       : e.participants.map((p) => ({ id: p.id, name: p.name })),
-    bottles: e.bottles.map((b) =>
+    bottles: (hiddenCups ? e.groups.flatMap(g=>g.bottleIds.map(id=>({id:g.publicIds![id],number:g.cupNumbers![id]}))) : e.bottles.map((b) =>
       admin || e.revealed ? b : { id: b.id, number: b.number },
-    ),
+    )) as (Bottle | Pick<Bottle,"id"|"number">)[],
     groups: e.groups.map((g) => ({
       id: g.id,
       name: g.name,
       stage: g.stage,
       status: g.status,
-      bottleIds: g.bottleIds,
+      bottleIds: hiddenCups?g.bottleIds.map(id=>g.publicIds![id]):g.bottleIds,
+      cupNumbers:e.workflowVersion===2?Object.fromEntries(g.bottleIds.map(id=>[hiddenCups?g.publicIds![id]:id,g.cupNumbers![id]])):undefined,
+      pourGuide:admin&&e.workflowVersion===2?g.bottleIds.map(id=>{const b=e.bottles.find(b=>b.id===id)!;return {cup:g.cupNumbers![id],bottleNumber:b.number,name:b.name,owner:e.participants.find(p=>p.id===b.ownerId)?.name??""};}).sort((a,b)=>a.cup-b.cup):undefined,
       runoff: !!g.runoffKey,
       submitted: g.ballots.length,
       submittedIds: admin ? g.ballots.map((b) => b.participantId) : undefined,
-      myBallot: g.ballots.find((b) => b.participantId === p?.id) ?? null,
+      myBallot: (()=>{const ballot=g.ballots.find(b=>b.participantId===p?.id);return !ballot?null:hiddenCups?{...ballot,entries:ballot.entries.map(x=>({...x,bottleId:g.publicIds![x.bottleId]}))}:ballot;})(),
       scores:
         admin && g.status === "closed"
           ? g.bottleIds.map((id) => metrics(g, id))

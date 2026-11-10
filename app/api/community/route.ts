@@ -23,6 +23,8 @@ export async function POST(req: Request) {
           "self",
           "enroll",
           "pending-members",
+          "review-member",
+          "invitations",
           "recover",
           "email-login",
           "community-invite",

@@ -1,10 +1,11 @@
+import {enrollmentAction,profileNames} from "./enrollment.ts";
 import {isBlindLocked,blindAccessChange} from "./blind-access.ts";
 import {canManageTeam,setCoAdmins,eventTeam,mailingList} from "./event-team.ts";
 import {seriesLogoUrl} from "./series-logos.ts";
 import { seriesAction } from "./series.ts";
 import { photoAction } from "./photos.ts";
 import { canDeleteEvent, eventSummary } from "./event-management.ts";
-import { communityAction, getProfile, rate } from "./community.ts";
+import { communityAction, getProfile, rate, send } from "./community.ts";
 import { historyFor } from "./community-shared.ts";
 import { randomBytes, createHash, randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -283,6 +284,7 @@ Deno.serve(async (req: Request) => {
         throw new Error("Enter an event name.");
       await rate(db, "event-create:" + a.id, 10, 86400);
       const event = createEvent(a.id, input.title, input.tasterCount ?? 12,input.eventType);
+      event.workflowVersion=2;
       const { error } = await db.from("bourbon_events").insert({
         id: event.id,
         owner_id: a.id,
@@ -303,6 +305,15 @@ Deno.serve(async (req: Request) => {
     if (error) throw new Error("The database could not be reached.");
     if (!data) return json({ error: "Event not found." }, 404);
     const event = data.state as Event;
+    if(input.action === "enrollment") {
+      const result=await enrollmentAction(input,db,event,a,(to,subject,text,key)=>send(db,req,to,subject,text,key));
+      if(input.operation==="welcome"){
+        const {data:edition}=await db.from("bourbon_editions").select("series_id").eq("event_id",event.id).maybeSingle();
+        const {data:series}=edition?await db.from("bourbon_series").select("logo_path,winner_award,swill_award").eq("id",edition.series_id).maybeSingle():{data:null};
+        return json({...result,logoUrl:await seriesLogoUrl(db,series?.logo_path),winnerAward:series?.winner_award??"Yorktown Tumbler",swillAward:series?.swill_award??"Swill Award"});
+      }
+      return json(result);
+    }
     if(input.action === "blind-access") {
       const next=blindAccessChange(event,a,communityProfile,{operation:input.operation,revision:input.revision,title:input.title,confirmed:input.confirmed,coordinatorId:input.coordinatorId},new Date().toISOString());
       if(input.operation==="lock") {
@@ -392,6 +403,7 @@ Deno.serve(async (req: Request) => {
       const series = edition ? (await db.from("bourbon_series").select("id,title,winner_award,swill_award,logo_path").eq("id",edition.series_id).single()).data : null;
       return json({
         ...snapshot(event, a),
+        enrollmentProgress:event.workflowVersion===2?{confirmed:(memberInvites??[]).filter(i=>i.status==="accepted").length,complete:event.bottles.filter(b=>b.name&&b.distillery&&b.proof).length}:null,
         series:series ? {id:series.id,title:series.title,year:edition!.year,logoUrl:await seriesLogoUrl(db,series.logo_path),winnerAward:series.winner_award,swillAward:series.swill_award} : null,
         memberInvitations:
           isEventAdmin(event,a)
@@ -521,6 +533,15 @@ Deno.serve(async (req: Request) => {
         },
         409,
       );
+    if(c.type==="start"&&event.workflowVersion===2){
+      const {data:invitations,error}=await db.from("bourbon_member_invites").select("participant_id,invitee_id,status").eq("event_id",event.id).eq("status","accepted");
+      if(error||!event.participants.every(p=>p.accountId&&invitations?.some(i=>i.participant_id===p.id&&i.invitee_id===p.accountId)))throw new Error("Every selected participant must accept their event invitation before preparation.");
+      const active=await db.from("bourbon_profiles").select("id").in("id",event.participants.map(p=>p.accountId)).eq("status","active");if(active.error||active.data?.length!==event.participants.length)throw new Error("Every participant must have an active approved profile.");
+    }
+    if(c.type==="roster-seat"){
+      if(!isEventAdmin(event,a))throw new Error("Only event admins can save participants.");
+      if(c.accountId){const profile=await getProfile(db,String(c.accountId));if(profile?.status!=="active")throw new Error("Select an approved member.");Object.assign(c,profileNames(profile),{email:profile.email});}
+    }
     if (c.type === "setup") {
       if (!isEventAdmin(event,a))
         return json(
@@ -540,7 +561,7 @@ Deno.serve(async (req: Request) => {
     }
     const next = applyCommand(event, a, c);
     const { data: saved, error: saveError } = await db.rpc(
-      "save_bourbon_community_event",
+      next.workflowVersion===2?"save_bourbon_enrollment_event":"save_bourbon_community_event",
       {
         p_id: event.id,
         p_revision: event.revision,

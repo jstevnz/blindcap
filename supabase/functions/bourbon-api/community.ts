@@ -1,3 +1,4 @@
+import {linkReserved,notifyEnrollmentForUser} from "./enrollment.ts";
 import { avatarUrl } from "./photos.ts";
 import { deletePendingApplication } from "./pending-deletion.ts";
 import { applyForMembership, notifyOwner } from "./applications.ts";
@@ -42,7 +43,7 @@ function active(p: Profile | null): asserts p is Profile {
   if (!p || p.status !== "active")
     throw new Error("An active private-community membership is required.");
 }
-async function send(
+export async function send(
   db: SupabaseClient,
   req: Request,
   to: string,
@@ -375,6 +376,8 @@ export async function communityAction(
     return { profiles: await Promise.all((data ?? []).map(async (x) => ({...publicProfile(x as Profile),avatarUrl:await avatarUrl(db,x.avatar_path)}))) };
   }
   if (op === "invitations") {
+    await linkReserved(db,a.id);
+    if(req.headers.get("x-blindcap-email-key"))await notifyEnrollmentForUser(db,a.id,services.deliver);
     const { data, error } = await db
       .from("bourbon_member_invites")
       .select("event_id,participant_id,status,invited_by")
@@ -491,6 +494,7 @@ export async function communityAction(
       throw new Error(
         "The signup or your permissions changed. Refresh the review list.",
       );
+    try {await notifyEnrollmentForUser(db,String(input.userId),services.deliver);}catch{return {reviewed:true,eventInvitesPending:true};}
     return { reviewed: true };
   }
   if (op === "community-invites") {

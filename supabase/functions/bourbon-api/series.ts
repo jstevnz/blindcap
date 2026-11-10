@@ -183,6 +183,7 @@ export async function seriesAction(
       Number(input.tasterCount ?? 12),
       type,
     );
+    event.workflowVersion=2;
     const { error } = await db.rpc("bourbon_create_edition", {
       p_series: s.id,
       p_year: year,
