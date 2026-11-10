@@ -240,3 +240,12 @@ test("only series managers can issue logo uploads, and paths cannot be chosen by
   );
   assert.match(uploads[0], /^series\/[0-9a-f-]{36}\.png$/);
 });
+
+test("personal event history includes only linked participated years and never unrevealed entries", async () => {
+  const {db,tables}=fixture();
+  tables.bourbon_series_people.push({id:"person",series_id:"series",name:"Invited member",profile_id:"invited"},{id:"other-person",series_id:"series",name:"Other",profile_id:"host"});
+  tables.bourbon_editions.push({id:"old",series_id:"series",year:2024,event_id:null,revision:0,historical_entries:[{personId:"person",name:"Invited member",bottle:"Recorded bottle",award:"winner"},{personId:"other-person",name:"Other",bottle:"Other bottle",award:"swill"}]});
+  const data:any=await seriesAction({operation:"personal-history"},db,actor("invited"));
+  assert.equal(data.records.length,1);assert.equal(data.records[0].year,2024);assert.equal(data.records[0].own.bottle,"Recorded bottle");assert.equal(data.records[0].entries.length,2);assert.ok(!JSON.stringify(data).includes("TOP SECRET"));
+  const outside:any=await seriesAction({operation:"personal-history"},db,actor("outsider"));assert.deepEqual(outside.records,[]);
+});

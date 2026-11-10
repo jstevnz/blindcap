@@ -1,5 +1,5 @@
 import type { Event, Actor } from "./engine.ts";
-import { snapshot } from "./engine.ts";
+import { snapshot, member } from "./engine.ts";
 export type Profile = {
   avatar_path?: string | null;
   mailing_address?: Record<string,string>;
@@ -103,6 +103,12 @@ export function historyFor(e: Event, a: Actor) {
     id: e.id,
     title: e.title,
     host: e.ownerId === a.id,
+    participating: Boolean(s.participantId),
+    participants: e.participants.map(p=>({id:p.id,name:p.name})),
+    results: (s.results ?? []).map(r=>{
+      const bottle=e.bottles.find(b=>b.id===r.bottleId);
+      return {...r,bottleName:bottle?.name ?? "Unknown bottle",distillery:bottle?.distillery,proof:bottle?.proof,ownerName:e.participants.find(p=>p.id===bottle?.ownerId)?.name ?? "Participant"};
+    }),
     bottle: ownBottle
       ? {
           name: ownBottle.name,
@@ -125,4 +131,11 @@ export function historyFor(e: Event, a: Actor) {
           })),
       })),
   };
+}
+
+export function currentParticipation(e:Event,a:Actor){
+  const seat=member(e,a);
+  if(!seat || (e.phase==="complete"&&e.revealed))return null;
+  const bottle=e.bottles.find(b=>b.ownerId===seat.id);
+  return {id:e.id,title:e.title,phase:e.phase,ownBottle:bottle?{name:bottle.name,distillery:bottle.distillery,proof:bottle.proof}:null};
 }

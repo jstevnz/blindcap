@@ -29,7 +29,7 @@ export default function ProfileAchievements() {
       {rows.map((r) => (
         <article key={r.seriesId}>
           <h3>
-            <a href={`/series?id=${r.seriesId}`}>{r.title}</a>
+            <a href={`/events?series=${r.seriesId}`}>{r.title}</a>
           </h3>
           <p>
             {r.winnerAward}: <strong>{r.wins}</strong> · {r.swillAward}:{" "}

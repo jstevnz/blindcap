@@ -5,12 +5,17 @@ import { request } from "@/lib/browser";
 import type { EventSummary } from "@/lib/event-management";
 import DeleteEventDialog from "@/app/components/DeleteEventDialog";
 import TastingHistory from "@/app/components/TastingHistory";
+import CommunityDashboard from "@/app/components/CommunityDashboard";
+import CreateEvent, {type EventSeries} from "@/app/components/CreateEvent";
+import dynamic from "next/dynamic";
+const SeriesDetail=dynamic(()=>import("@/app/components/SeriesDetail"),{loading:()=> <main className="narrow"><p>Loading series…</p></main>});
 type Catalog = {
   events: EventSummary[];
   communityOwner: boolean;
   member: boolean;
 };
 export default function Events() {
+  const [view,setView]=useState(""),[series,setSeries]=useState<EventSeries[]>([]),[route,setRoute]=useState({create:false,series:false});
   const [catalog, setCatalog] = useState<Catalog | null>(null),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -25,10 +30,11 @@ export default function Events() {
     [busy, setBusy] = useState(false),
     [refresh, setRefresh] = useState(0);
   const load = useCallback(async () => {
-    const data = await request("/api/events/catalog");
-    setCatalog(data);
+    const [data, annual] = await Promise.all([request("/api/events/catalog"),request("/api/series",{operation:"list"})]);
+    setCatalog(data);setSeries(annual.series);
   }, []);
   useEffect(() => {
+    const params=new URLSearchParams(location.search);setRoute({create:params.has("create"),series:params.has("series")});
     load().catch((e) => setError(e.message));
   }, [load]);
   async function changeBlind(coordinatorId?: string) {
@@ -92,9 +98,11 @@ export default function Events() {
       setBusy(false);
     }
   }
+  const activeView=view || (catalog?.communityOwner ? "community" : "mine");
   const events =
     catalog?.events.filter(
       (e) =>
+        (activeView==="community" || (activeView==="hosting" ? e.managing || e.hostedByMe : e.participating)) &&
         (filter === "all" ||
           (filter === "complete"
             ? e.phase === "complete"
@@ -105,6 +113,8 @@ export default function Events() {
           .toLowerCase()
           .includes(search.trim().toLowerCase()),
     ) ?? [];
+  if(route.series)return <SeriesDetail />;
+  if(route.create)return <main className="narrow"><CreateEvent series={series}/>{error&&<p role="alert" className="error">{error}</p>}</main>;
   return (
     <main className="narrow events-page">
       <p className="eyebrow">YOUR BLINDCAP COMMUNITY</p>
@@ -112,16 +122,8 @@ export default function Events() {
         <h1>Events.</h1>
         <a href="/">← Home</a>
       </div>
-      <p>
-        <a href="/series">
-          Browse event series, annual history & leaderboards →
-        </a>
-      </p>
-      <p>
-        {catalog?.communityOwner
-          ? "You can see and delete every community event."
-          : "Open your events and review your history. You can delete only events you created and host."}
-      </p>
+      <p>Your invitations, events and annual series, together in one place.</p>
+      <div className="actions section-navigation"><a className="button" href="/events?create=1">Create an Event</a><a href="/account#tasting-history">My history & awards →</a></div>
       {error && (
         <p className="error" role="alert">
           {error}
@@ -134,12 +136,21 @@ export default function Events() {
       )}
       {catalog ? (
         <>
+          <CommunityDashboard owner={catalog.communityOwner} invitationsOnly />
+          <nav className="actions event-tabs" aria-label="Event views">
+            <button className={activeView==="mine"?"":"secondary"} aria-pressed={activeView==="mine"} onClick={()=>setView("mine")}>My Events</button>
+            <button className={activeView==="hosting"?"":"secondary"} aria-pressed={activeView==="hosting"} onClick={()=>setView("hosting")}>Hosting</button>
+            {catalog.communityOwner&&<button className={activeView==="community"?"":"secondary"} aria-pressed={activeView==="community"} onClick={()=>setView("community")}>All Community Events</button>}
+          </nav>
+          <section className="panel">
+            <h2>Event series</h2><p>Open a series to see every year, past bottles and its running leaderboard.</p>
+            {!series.length&&<p>Your series will appear here when you’re invited or create one.</p>}
+            {series.map(s=><a className="event-link" href={`/events?series=${s.id}`} key={s.id}>{s.logoUrl&&<img className="series-logo-thumb" src={s.logoUrl} alt=""/>}<strong>{s.title}</strong><span>Years & results →</span></a>)}
+          </section>
           <section className="panel">
             <div className="row-between">
               <h2>
-                {catalog.communityOwner
-                  ? "All community events"
-                  : "Your events"}
+                {activeView==="community"?"All Community Events":activeView==="hosting"?"Events I host":"My Events"}
               </h2>
               <button
                 className="secondary"
@@ -268,7 +279,7 @@ export default function Events() {
               </article>
             ))}
           </section>
-          {catalog.member && <TastingHistory key={refresh} />}
+          {catalog.member && activeView==="mine" && <TastingHistory key={refresh} />}
         </>
       ) : (
         !error && <p>Loading your events…</p>

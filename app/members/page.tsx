@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import CommunityDashboard from "@/app/components/CommunityDashboard";
 import { request } from "@/lib/browser";
 type Applicant = {
   status: "pending" | "suspended";
@@ -148,6 +149,7 @@ export default function Members() {
         </section>
       )}
       {!rows && !error && <p>Loading signup reviews…</p>}
+      {rows && <CommunityDashboard owner communityOnly />}
       {target && (
         <dialog
           ref={dialog}

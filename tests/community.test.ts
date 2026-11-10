@@ -173,6 +173,11 @@ test("permanent history includes only own ballots and own bottle after reveal", 
   e = applyCommand(e, host, { type: "reveal" });
   const h = historyFor(e, actors[0])!;
   assert.equal(h.bottle?.name, "Member bottle");
+  assert.equal(h.participating,true);
+  assert.equal(h.participants.length,2);
+  assert.equal(h.results.length,2);
+  assert.ok(h.results.every(r=>r.bottleName&&r.ownerName));
+  assert.ok(!JSON.stringify(h.participants).includes("@"));
   assert.equal(h.ballots.length, 1);
   assert.equal(h.ballots[0].entries.length, 2);
   assert.deepEqual(
@@ -218,4 +223,14 @@ test("private profile contacts stay out of searchable member data", () => {
   const data = JSON.stringify(publicProfile(p));
   for (const secret of [p.email, p.full_name!, p.phone!, p.location!])
     assert.equal(data.includes(secret), false);
+});
+
+test("unrevealed personal participation exposes only the current member’s submitted bottle",async()=>{
+  const {currentParticipation}=await import("../lib/community");
+  const e=createEvent(host.id,"Private",2);e.workflowVersion=2;
+  e.participants=[{id:"seat",name:"Member",email:member.email,accountId:member.id}];
+  e.bottles=[{id:"own",number:1,name:"My entry",ownerId:"seat",distillery:"My distillery",proof:100},{id:"hidden",number:2,name:"Hidden opponent",ownerId:"other"}];
+  assert.equal(currentParticipation(e,member),null);
+  const data=currentParticipation(e,{...member,guestParticipantId:"seat"})!;
+  assert.equal(data.ownBottle?.name,"My entry");assert.ok(!JSON.stringify(data).includes("Hidden opponent"));assert.equal(currentParticipation(e,host),null);
 });

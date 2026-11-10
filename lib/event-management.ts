@@ -1,5 +1,5 @@
 import { isBlindLocked, canControlBlindAccess } from "./blind-access.ts";
-import { authorized, eventSize, type Actor, type Event } from "./engine";
+import { authorized, member, isEventAdmin, eventSize, type Actor, type Event } from "./engine";
 type Membership = { status: string; role: string } | null;
 export function canDeleteEvent(
   ownerId: string,
@@ -28,6 +28,8 @@ export function eventSummary(
     hostName,
     coordinatorId: event.ownerId,
     hostedByMe: event.ownerId === actor.id,
+    managing: isEventAdmin(event, actor),
+    participating: Boolean(member(event, actor)),
     canOpen: authorized(event, actor),
     canDelete:
       !isBlindLocked(event, actor.id) &&

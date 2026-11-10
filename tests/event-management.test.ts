@@ -109,3 +109,15 @@ test("event management permissions match the deployed service source", () => {
     ),
   );
 });
+
+test("My Events distinguishes accepted participation from host and community-owner privileges",()=>{
+  const e=createEvent(host.id,"Participation",2);e.workflowVersion=2;
+  e.participants=[{id:"seat",name:"Member",email:other.email,accountId:other.id}];
+  const summary=(a:any,p:any)=>eventSummary(e,"2026-11-10","Host",a,p);
+  assert.equal(summary(host,active).participating,false);
+  assert.equal(summary(host,active).managing,true);
+  assert.equal(summary(owner,communityOwner).participating,false);
+  assert.equal(summary(other,active).participating,false);
+  assert.equal(summary({...other,guestParticipantId:"seat"},active).participating,true);
+  assert.equal(summary({...other,guestParticipantId:"seat"},active).managing,false);
+});

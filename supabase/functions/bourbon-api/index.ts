@@ -6,7 +6,7 @@ import { seriesAction } from "./series.ts";
 import { photoAction } from "./photos.ts";
 import { canDeleteEvent, eventSummary } from "./event-management.ts";
 import { communityAction, getProfile, rate, send } from "./community.ts";
-import { historyFor } from "./community-shared.ts";
+import { historyFor, currentParticipation } from "./community-shared.ts";
 import { randomBytes, createHash, randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -245,16 +245,18 @@ Deno.serve(async (req: Request) => {
             403,
           );
         const histories = [];
+        const upcoming=[];
         for (const row of rows) {
           const seat = guest.data?.find(
             (g) => g.event_id === row.id,
           )?.participant_id;
           const actor = { ...a, guestParticipantId: seat };
           if (!authorized(row.state as Event, actor)) continue;
+          const pending=currentParticipation(row.state as Event,actor);if(pending)upcoming.push(pending);
           const result = historyFor(row.state as Event, actor);
           if (result) histories.push(result);
         }
-        return json({ events: histories });
+        return json({ events: histories, upcoming });
       }
       return json(
         rows

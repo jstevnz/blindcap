@@ -1,9 +1,6 @@
 "use client";
-import EventTypePicker from "@/app/components/EventTypePicker";
 import { useEffect, useState } from "react";
 import { browser, configured, request } from "@/lib/browser";
-import { tournamentPlan } from "@/lib/tournament";
-import CommunityDashboard from "./components/CommunityDashboard";
 type Self = {
   profile: {
     username: string;
@@ -24,8 +21,6 @@ export default function Home() {
     [mode, setMode] = useState<"password" | "email-login" | "recover">(
       "password",
     ),
-    [title, setTitle] = useState(""),
-    [count, setCount] = useState(12),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false);
@@ -58,16 +53,13 @@ export default function Home() {
     }
   }
   const member = self?.profile?.status === "active";
-  const plan = tournamentPlan(count);
   return (
     <main>
-      <section className="hero">
+      <section className={user ? "dashboard-heading" : "hero"}>
         <h1>
           {user ? (
             <>
-              Your next
-              <br />
-              <em>event.</em>
+              Your Blindcap.
             </>
           ) : (
             <>
@@ -90,11 +82,11 @@ export default function Home() {
             the reveal crowns a winner.
           </p>
         )}
-        <div className="hero-rule">
+        {!user && <div className="hero-rule">
           <span>BUILD YOUR EVENT</span>
           <span>COMPARE BLIND</span>
           <span>REVEAL THE WINNER</span>
-        </div>
+        </div>}
       </section>
       <section className="panel welcome">
         <p className="eyebrow">YOUR SEAT AT THE TABLE</p>
@@ -114,17 +106,13 @@ export default function Home() {
                 ? "Signed in to your guest seat"
                 : `Signed in as ${user}`}
             </p>
-            {self?.profile && (
+            {self?.profile && !member && (
               <p>
                 <a href="/account">My profile & password →</a>
               </p>
             )}
             {member ? (
               <div className="actions home-navigation">
-                <a className="event-link" href="/series">
-                  <strong>Event series</strong>
-                  <span>Annual history & leaderboards →</span>
-                </a>
                 <a className="event-link" href="/events">
                   <strong>Events</strong>
                   <span>View & manage →</span>
@@ -135,6 +123,7 @@ export default function Home() {
                     <span>Approve pending profiles →</span>
                   </a>
                 )}
+                <a className="event-link" href="/account"><strong>My Profile and Password</strong><span>Profile, event history & awards →</span></a>
               </div>
             ) : self?.profile?.status === "pending" ? (
               <p className="notice">
@@ -160,65 +149,7 @@ export default function Home() {
                 )}
               </div>
             )}
-            {member ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const selectedEventType = new FormData(e.currentTarget).get(
-                    "eventType",
-                  );
-                  act(async () => {
-                    const event = await request("/api/events", {
-                      eventType: selectedEventType,
-                      title,
-                      tasterCount: count,
-                    });
-                    location.href = `/event/${event.id}`;
-                  });
-                }}
-              >
-                <label>
-                  Name a new one-time event
-                  <input
-                    value={title}
-                    placeholder="Enter an event name"
-                    maxLength={100}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                  />
-                </label>
-                <EventTypePicker />
-                <label>
-                  Number of tasters / bottles
-                  <select
-                    value={count}
-                    onChange={(e) => setCount(Number(e.target.value))}
-                  >
-                    {Array.from({ length: 15 }, (_, i) => (
-                      <option value={i + 2} key={i + 2}>
-                        {i + 2} tasters · {i + 2} bottles
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <p className="fine">
-                  {count <= 4
-                    ? `One final of ${count}${count === 2 ? " · Head-to-head" : ""}`
-                    : `Opening: ${plan.opening.join(" + ")}${plan.semifinal.length ? ` → Semifinals: ${plan.semifinal.join(" + ")}` : ""} → Final four`}
-                </p>
-                <button disabled={busy}>
-                  Create an event <span>↗</span>
-                </button>
-              </form>
-            ) : self?.profile?.status === "pending" ? null : (
-              <p className="fine">
-                Guest invitations continue to work. To keep permanent history
-                and host your own events,{" "}
-                <a href="/register">sign up for a profile</a>. Stay signed into
-                this guest seat during signup to connect this history after
-                approval.
-              </p>
-            )}
+            {!member && self?.profile?.status !== "pending" && <p className="fine">Guest invitations continue to work. <a href="/register">Create a profile</a> to keep your history and host events.</p>}
             <button
               className="text-button"
               onClick={() =>
@@ -348,8 +279,7 @@ export default function Home() {
           </p>
         )}
       </section>
-      {member && <CommunityDashboard owner={self.profile!.role === "owner"} />}
-      <section className="how">
+      {!user && <section className="how">
         <div>
           <span>01 / CREATE</span>
           <h3>Build your own event.</h3>
@@ -370,7 +300,7 @@ export default function Home() {
             rankings.
           </p>
         </div>
-      </section>
+      </section>}
     </main>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import TastingHistory from "@/app/components/TastingHistory";
 import ProfilePhoto from "@/app/components/ProfilePhoto";
 import ProfileAchievements from "@/app/components/ProfileAchievements";
 import { request, browser } from "@/lib/browser";
@@ -53,7 +54,8 @@ export default function Account() {
   return (
     <main className="narrow">
       <p className="eyebrow">YOUR BLINDCAP ACCOUNT</p>
-      <h1>Your profile.</h1>
+      <div className="row-between"><h1>My Profile and Password.</h1><a href="/">← Home</a></div>
+      <nav className="actions section-navigation" aria-label="Profile sections"><a href="#profile-details">My details</a><a href="#password">Password</a><a href="#tasting-history">My Events & awards</a></nav>
       {p && (
         <>
           {p.status === "pending" && (
@@ -63,8 +65,8 @@ export default function Account() {
             </p>
           )}
           <ProfilePhoto name={p.displayName} initialUrl={p.avatarUrl} />
-          {p.status === "active" && <ProfileAchievements />}
-          <section className="panel">
+          <section className="panel" id="profile-details">
+            <h2>My profile</h2>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -163,7 +165,7 @@ export default function Account() {
               <button disabled={busy}>Save profile</button>
             </form>
           </section>
-          <section className="panel">
+          <section className="panel" id="password">
             <h2>Set or change your password</h2>
             <p>
               Your existing email-link login continues to work. Adding a
@@ -197,6 +199,7 @@ export default function Account() {
               <button disabled={busy}>Save password</button>
             </form>
           </section>
+          {p.status === "active" && <><TastingHistory /><ProfileAchievements /></>}
         </>
       )}
       {error && (

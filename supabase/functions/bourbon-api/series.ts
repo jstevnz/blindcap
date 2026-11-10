@@ -145,6 +145,17 @@ export async function seriesAction(
       people: manage(s) ? people : [],
     };
   }
+  if (input.operation === "personal-history") {
+    const records=[];
+    for(const series of visible){
+      const d=await detail(series);
+      for(const edition of d.editions){
+        const own=edition.entries?.find(r=>r.profileId===a.id);
+        if(own)records.push({seriesId:series.id,title:series.title,year:edition.year,eventId:edition.eventId,own,entries:edition.entries,winnerAward:series.winner_award,swillAward:series.swill_award});
+      }
+    }
+    return {records};
+  }
   if (input.operation === "achievements") {
     const data = [];
     for (const s of visible) {

@@ -7,7 +7,7 @@ type Invitation = {
   title: string;
   host: string;
 };
-export default function CommunityDashboard({ owner }: { owner: boolean }) {
+export default function CommunityDashboard({ owner, invitationsOnly = false, communityOnly = false }: { owner: boolean; invitationsOnly?: boolean; communityOnly?: boolean }) {
   const [invitations, setInvitations] = useState<Invitation[]>([]),
     [email, setEmail] = useState(""),
     [inviteUrl, setInviteUrl] = useState(""),
@@ -27,7 +27,7 @@ export default function CommunityDashboard({ owner }: { owner: boolean }) {
       operation: "invitations",
     });
     setInvitations(pending.invitations);
-    if (owner) {
+    if (owner && !invitationsOnly) {
       const c = await request("/api/community", {
         operation: "community-invites",
       });
@@ -36,7 +36,7 @@ export default function CommunityDashboard({ owner }: { owner: boolean }) {
   }
   useEffect(() => {
     load().catch((e) => setError(e.message));
-  }, [owner]);
+  }, [owner, invitationsOnly]);
   async function run(f: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -49,9 +49,10 @@ export default function CommunityDashboard({ owner }: { owner: boolean }) {
       setBusy(false);
     }
   }
+  if (invitationsOnly && !invitations.length && !error) return null;
   return (
     <section className="community-dashboard">
-      <section className="panel">
+      {!communityOnly && <section className="panel">
         <div className="row-between">
           <h2>Your invitations</h2>
           <button
@@ -102,8 +103,8 @@ export default function CommunityDashboard({ owner }: { owner: boolean }) {
             </div>
           </div>
         ))}
-      </section>
-      {owner && (
+      </section>}
+      {owner && !invitationsOnly && (
         <section className="panel">
           <p className="eyebrow">COMMUNITY OWNER</p>
           <p>

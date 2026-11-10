@@ -854,3 +854,17 @@ textarea {
 @media (min-width: 601px) and (max-width: 800px) {
   .event-main input, .event-main select, .event-main textarea { font-size: 16px; }
 }
+
+/* Signed-in navigation keeps the three main destinations together. */
+.dashboard-heading { padding: 1.5rem 0 .5rem; }
+.dashboard-heading h1 { font-size: clamp(2rem, 6vw, 3.5rem); margin-bottom: .5rem; }
+.home-navigation { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); align-items: stretch; }
+.home-navigation .event-link { margin: 0; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+.section-navigation { margin: 1.5rem 0; }
+.event-tabs { margin: 1.5rem 0; }
+.event-tabs button { flex: 1 1 150px; }
+.event-link { overflow-wrap: anywhere; }
+#profile-details, #password, #tasting-history { scroll-margin-top: 1.5rem; }
+@media (max-width: 600px) { .section-navigation .button { width: 100%; text-align: center; } .event-tabs { gap: .5rem; } .event-tabs button { padding: .85rem .5rem; font-size: 1rem; } }
+
+@media (max-width: 600px) { .narrow input, .narrow select, .narrow textarea { font-size: 16px; } }
