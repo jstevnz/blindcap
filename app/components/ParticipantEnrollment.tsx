@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Snapshot, Command } from "@/lib/engine";
 import { request } from "@/lib/browser";
+import PhysicalMailingList from "./PhysicalMailingList";
 import BottleEntryForm from "./BottleEntryForm";
 type Profile = {
   id: string;
@@ -300,6 +301,7 @@ export default function ParticipantEnrollment({
           </p>
         )}
       </section>
+      {e.participants.length === e.tasterCount && !Object.values(dirty).some(Boolean) && <PhysicalMailingList id={e.id} />}
       {e.rosterInvited && (
         <section className="panel">
           <p className="eyebrow">2 / CONFIRM BOTTLES</p>

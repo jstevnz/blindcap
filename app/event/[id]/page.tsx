@@ -4,6 +4,7 @@ import type { Snapshot, Entry, Command } from "@/lib/engine";
 import MemberPicker from "@/app/components/MemberPicker";
 import ParticipantEnrollment from "@/app/components/ParticipantEnrollment";
 import EventWelcome from "@/app/components/EventWelcome";
+import PhysicalMailingList from "@/app/components/PhysicalMailingList";
 import EventTeam from "@/app/components/EventTeam";
 import Awards from "@/app/components/Awards";
 import { request } from "@/lib/browser";
@@ -326,6 +327,7 @@ export default function EventPage({
               busy={busy}
             />
           )}
+          {e.workflowVersion !== 2 && e.participants.length > 0 && <PhysicalMailingList id={id} />}
           {e.phase === "setup" ? (
             e.workflowVersion === 2 ? null : (
               <section className="panel">
