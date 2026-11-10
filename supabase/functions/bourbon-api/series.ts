@@ -225,6 +225,9 @@ export async function seriesAction(
     check(error);
     if (!event || (!global && event.owner_id !== a.id))
       throw new Error("Only your own events can be attached.");
+    const {data:existingEdition,error:linkError}=await db.from("bourbon_editions").select("id").eq("event_id",input.eventId).maybeSingle();
+    if(linkError)throw new Error("Unable to verify whether this event is standalone.");
+    if(existingEdition)throw new Error("This event already belongs to a series. Only standalone events can be added.");
     const { error: save } = await db.from("bourbon_editions").insert({
       series_id: s.id,
       year: annualYear(input.year),

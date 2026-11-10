@@ -40,6 +40,7 @@ function fixture() {
     bourbon_events: [
       {
         id: "event",
+        owner_id:"host",
         state: {
           id: "event",
           ownerId: "host",
@@ -71,6 +72,8 @@ function fixture() {
       this.filters.push((r) => values.every((v) => (r[k] ?? []).includes(v)));
       return this;
     }
+    insert(value:any) { tables[this.table].push(...(Array.isArray(value)?value:[value]));return this; }
+    upsert(value:any) { return this.insert(value); }
     order() {
       return this;
     }
@@ -259,4 +262,18 @@ test('series deletion controls require event ownership or site ownership and his
  await assert.rejects(seriesAction({operation:'delete-history',seriesId:'series',confirmed:true},db,actor('invited')),/Only the series creator/);
  await assert.rejects(seriesAction({operation:'delete-history',seriesId:'series',confirmed:false,editionId:'old',revision:0,year:2022,title:'Yorktown'},db,actor('owner')),/Confirm the named/);
  const deleted:any=await seriesAction({operation:'delete-history',seriesId:'series',confirmed:true,editionId:'old',revision:0,year:2022,title:'Yorktown'},db,actor('owner'));assert.equal(deleted.deleted,true);
+});
+
+test("only standalone events may be attached, including for the community owner",async()=>{
+ const {db,tables}=fixture();
+ for(const id of ["owner","host"]){
+  await assert.rejects(seriesAction({operation:"attach-event",seriesId:"series",eventId:"event",year:2026},db,actor(id)),/already belongs to a series/);
+ }
+ tables.bourbon_series.push({id:"second",owner_id:"host",title:"Another series",winner_award:"Winner",swill_award:"Last"});
+ await assert.rejects(seriesAction({operation:"attach-event",seriesId:"second",eventId:"event",year:2026},db,actor("owner")),/Only standalone events/);
+ assert.equal(tables.bourbon_editions.length,1);
+ tables.bourbon_events.push({id:"standalone",owner_id:"host",state:{ownerId:"host",phase:"setup",participants:[]}});
+ const result:any=await seriesAction({operation:"attach-event",seriesId:"series",eventId:"standalone",year:2026},db,actor("owner"));
+ assert.equal(result.saved,true);assert.equal(tables.bourbon_editions.length,2);
+ await assert.rejects(seriesAction({operation:"attach-event",seriesId:"second",eventId:"standalone",year:2027},db,actor("host")),/already belongs/);
 });

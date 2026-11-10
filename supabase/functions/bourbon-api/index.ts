@@ -208,9 +208,11 @@ Deno.serve(async (req: Request) => {
               .in("id", ownerIds)
           : { data: [], error: null };
         if (hosts.error) throw new Error("Unable to load event hosts.");
+        const links = rows.length ? await db.from("bourbon_editions").select("event_id,series_id").in("event_id",rows.map(row=>row.id)) : {data:[],error:null};
+        if(links.error)throw new Error("Unable to load event series links.");
         const events = rows
-          .map((row) =>
-            eventSummary(
+          .map((row) => ({
+            ...eventSummary(
               row.state as Event,
               row.created_at,
               hosts.data?.find((h) => h.id === row.state.ownerId)
@@ -223,7 +225,8 @@ Deno.serve(async (req: Request) => {
               },
               communityProfile,
             ),
-          )
+            seriesId:links.data?.find(link=>link.event_id===row.id)?.series_id ?? null,
+          }))
           .filter((row) => global || row.canOpen || row.hostedByMe)
           .sort(
             (x, y) =>

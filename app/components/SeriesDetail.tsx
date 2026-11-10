@@ -85,7 +85,7 @@ export default function SeriesPage() {
         const c = await request("/api/events/catalog");
         setCatalog(
           c.events.filter(
-            (e: { hostedByMe: boolean }) => c.communityOwner || e.hostedByMe,
+            (e: { hostedByMe: boolean; seriesId: string | null }) => !e.seriesId && (c.communityOwner || e.hostedByMe),
           ),
         );
       }
@@ -354,6 +354,8 @@ export default function SeriesPage() {
               </section>
               <section className="panel">
                 <h2>Add an existing event to this series</h2>
+                <p>Only standalone events can be added. Events already in a series stay with their current series.</p>
+                {!catalog.length && <p>No standalone events are available to add.</p>}
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();

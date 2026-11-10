@@ -99,6 +99,8 @@ test("series migration preserves event state, rejects public access, and atomica
       ).rows[0].owner_id,
       coord,
     );
+    const otherSeries=(await db.query<{id:string}>("insert into bourbon_series(owner_id,title) values($1,'Another series') returning id",[owner])).rows[0].id;
+    await assert.rejects(db.query("insert into bourbon_editions(series_id,year,event_id) values($1,2027,$2)",[otherSeries,event.id]),/unique constraint/);
     await assert.rejects(
       db.query("select bourbon_create_edition($1,2027,$2,$3)", [
         series,
