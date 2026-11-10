@@ -1,3 +1,5 @@
+import {canDeleteEvent} from "./event-management.ts";
+import {isBlindLocked} from "./blind-access.ts";
 import {requireEventType,eventTypeFor} from "./event-types.ts";
 import { seriesLogoUrl, seriesLogoAction } from "./series-logos.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -132,6 +134,9 @@ export async function seriesAction(
         revision: e.revision,
         source: ev ? "Blindcap" : "Historical entry",
         eventId: e.event_id,
+        eventRevision:ev?.revision ?? null,
+        eventTitle:ev?.title ?? `${s.title} ${e.year}`,
+        canDelete:ev ? canDeleteEvent(ev.ownerId,a.id,p) && !isBlindLocked(ev,a.id) : manage(s),
         canOpen: ev?.ownerId === a.id || ids.includes(e.event_id),
         phase: ev?.phase ?? "complete",
         revealed: ev ? ev.revealed : true,
@@ -179,6 +184,13 @@ export async function seriesAction(
     throw new Error(
       "Only the series creator or site owner can manage its history and editions.",
     );
+  if(input.operation === "delete-history") {
+    if(input.confirmed!==true || input.title!==s.title || !Number.isInteger(input.revision) || !Number.isInteger(input.year) || typeof input.editionId!=="string")throw new Error("Confirm the named historical year before deleting it.");
+    const {data:removed,error}=await db.rpc("delete_bourbon_historical_edition",{p_id:input.editionId,p_series:s.id,p_actor:a.id,p_revision:input.revision,p_year:input.year,p_title:input.title});
+    if(error)throw new Error("The historical year could not be deleted. Please try again.");
+    if(!removed)throw new Error("The year or your permissions changed. Reload and confirm deletion again.");
+    return {deleted:true};
+  }
   if (String(input.operation).startsWith("logo-"))
     return await seriesLogoAction(input, db, s, a.id);
   if (input.operation === "create-edition") {

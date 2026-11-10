@@ -249,3 +249,14 @@ test("personal event history includes only linked participated years and never u
   assert.equal(data.records.length,1);assert.equal(data.records[0].year,2024);assert.equal(data.records[0].own.bottle,"Recorded bottle");assert.equal(data.records[0].entries.length,2);assert.ok(!JSON.stringify(data).includes("TOP SECRET"));
   const outside:any=await seriesAction({operation:"personal-history"},db,actor("outsider"));assert.deepEqual(outside.records,[]);
 });
+
+test('series deletion controls require event ownership or site ownership and historical confirmation',async()=>{
+ const {db,tables}=fixture();
+ let d:any=await seriesAction({operation:'detail',seriesId:'series'},db,actor('invited'));assert.equal(d.editions[0].canDelete,false);
+ d=await seriesAction({operation:'detail',seriesId:'series'},db,actor('owner'));assert.equal(d.editions[0].canDelete,true);
+ tables.bourbon_events[0].state.blindParticipantIds=['owner'];
+ d=await seriesAction({operation:'detail',seriesId:'series'},db,actor('owner'));assert.equal(d.editions[0].canDelete,false);
+ await assert.rejects(seriesAction({operation:'delete-history',seriesId:'series',confirmed:true},db,actor('invited')),/Only the series creator/);
+ await assert.rejects(seriesAction({operation:'delete-history',seriesId:'series',confirmed:false,editionId:'old',revision:0,year:2022,title:'Yorktown'},db,actor('owner')),/Confirm the named/);
+ const deleted:any=await seriesAction({operation:'delete-history',seriesId:'series',confirmed:true,editionId:'old',revision:0,year:2022,title:'Yorktown'},db,actor('owner'));assert.equal(deleted.deleted,true);
+});

@@ -20,6 +20,9 @@ type Edition = {
   revision: number;
   source: string;
   eventId: string | null;
+  eventRevision: number | null;
+  eventTitle: string;
+  canDelete: boolean;
   canOpen: boolean;
   phase: string;
   revealed: boolean;
@@ -102,6 +105,19 @@ export default function SeriesPage() {
     } finally {
       setBusy(false);
     }
+  }
+  async function removeEdition(edition:Edition){
+    if(!detail || busy)return;
+    const title=edition.eventTitle || `${detail.title} ${edition.year}`;
+    if(!window.confirm(`Permanently delete ${title}? This removes this year’s ${edition.eventId?"scores, invitations and tasting history":"historical results and awards"} for everyone. This cannot be undone. The series and its other years will be kept.`))return;
+    await run(async()=>{
+      if(edition.eventId){
+        const response=await fetch(`/api/events/${edition.eventId}`,{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision:edition.eventRevision,title:edition.eventTitle,confirmed:true})});
+        const data=await response.json();if(!response.ok)throw new Error(data.error??"Unable to delete this event.");
+      }else await api("delete-history",{editionId:edition.id,year:edition.year,revision:edition.revision,title:detail.title,confirmed:true});
+      if(editing?.id===edition.id){setEditing(null);setEntries(empty());}
+      await load();setNotice(`${title} was deleted. The series and other years are unchanged.`);
+    });
   }
   const field = (i: number, key: keyof Entry, value: string) =>
     setEntries((rows) =>
@@ -196,7 +212,7 @@ export default function SeriesPage() {
               )
               .map((edition) => (
                 <article className="edition" key={edition.id}>
-                  <h3>{edition.year}</h3>
+                  <div className="row-between"><h3>{edition.year}</h3>{edition.canDelete&&<button type="button" className="secondary danger-outline" disabled={busy} onClick={()=>removeEdition(edition)} aria-label={`Delete ${detail.title} ${edition.year}`}>Delete event</button>}</div>
                   <p className="fine">
                     {edition.source} · {edition.phase}
                     {edition.revealed

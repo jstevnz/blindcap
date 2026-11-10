@@ -1,0 +1,9 @@
+# Series event deletion fix
+
+The 2022 Yorktown edition is a live event linked to a series. Its foreign key used ON DELETE RESTRICT, so the existing confirmed event deletion was blocked. The reviewed migration changes that link to ON DELETE CASCADE: deletion of one authorized event atomically removes its edition link, while keeping the series and every other year. Applying the migration does not delete any records.
+
+The series year view now offers Delete event for the event host or community owner, excluding accounts participating blind. Live events use the existing permission/revision/title-checked delete endpoint. Historical years without a live event use a new service-only SECURITY INVOKER function that checks active site-owner/series-owner permission and the exact series, edition, year, title and revision. Every UI deletion asks for confirmation and warns about permanent history removal. A linked event cannot be deleted through the historical-only function. Co-admins and participants receive no new deletion powers.
+
+Validation: all 148 tests pass, both TypeScript checks and the production build pass. The PostgreSQL-compatible rehearsal first reproduces the restrict failure, then verifies owner deletion, dependent edition cleanup, preservation of other years, stale/title mismatch rejection, no browser execution grants and historical-only scope. API tests check owner/participant/blind-locked controls and required confirmation. No production event or historical record was deleted during testing.
+
+Publish the exact reviewed source, apply the additive function/foreign-key migration, replace bourbon-api, then deploy the matching website. Verify the new function remains service-only and the foreign key is CASCADE. Existing backend-only tables intentionally retain RLS with no browser policies. No authentication changes are included.
