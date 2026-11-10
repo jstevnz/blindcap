@@ -562,7 +562,7 @@ export function snapshot(e: Event, a: Actor) {
     (admin || e.revealed) && e.phase === "complete" ? results(e) : null;
   return {
     id: e.id,
-    series: null as {id:string;title:string;year:number;winnerAward:string;swillAward:string}|null,
+    series: null as {id:string;title:string;year:number;logoUrl?:string|null;winnerAward:string;swillAward:string}|null,
     title: e.title,
     tasterCount: eventSize(e),
     plan: tournamentPlan(eventSize(e)),

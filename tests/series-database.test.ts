@@ -49,6 +49,15 @@ test("series migration preserves event state, rejects public access, and atomica
         "utf8",
       ),
     );
+    await db.exec(
+      await readFile(
+        new URL(
+          "../supabase/migrations/20261110022410_series_logos.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
     assert.deepEqual(
       (await db.query<{ state: unknown }>("select state from bourbon_events"))
         .rows[0].state,

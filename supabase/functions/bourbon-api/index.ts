@@ -1,3 +1,4 @@
+import {seriesLogoUrl} from "./series-logos.ts";
 import { seriesAction } from "./series.ts";
 import { photoAction } from "./photos.ts";
 import { canDeleteEvent, eventSummary } from "./event-management.ts";
@@ -362,10 +363,10 @@ Deno.serve(async (req: Request) => {
         .select("participant_id,status")
         .eq("event_id", event.id);
       const {data:edition} = await db.from("bourbon_editions").select("series_id,year").eq("event_id",event.id).maybeSingle();
-      const series = edition ? (await db.from("bourbon_series").select("id,title,winner_award,swill_award").eq("id",edition.series_id).single()).data : null;
+      const series = edition ? (await db.from("bourbon_series").select("id,title,winner_award,swill_award,logo_path").eq("id",edition.series_id).single()).data : null;
       return json({
         ...snapshot(event, a),
-        series:series ? {id:series.id,title:series.title,year:edition!.year,winnerAward:series.winner_award,swillAward:series.swill_award} : null,
+        series:series ? {id:series.id,title:series.title,year:edition!.year,logoUrl:await seriesLogoUrl(db,series.logo_path),winnerAward:series.winner_award,swillAward:series.swill_award} : null,
         memberInvitations:
           event.ownerId === a.id
             ? (memberInvites ?? []).map((i) => ({

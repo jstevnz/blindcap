@@ -210,3 +210,29 @@ test("photo upload always scopes to the authenticated profile and rejects nonmem
     /eligible member/,
   );
 });
+
+test("only series managers can issue logo uploads, and paths cannot be chosen by the client", async () => {
+  const { db, uploads } = fixture();
+  await assert.rejects(
+    seriesAction(
+      { operation: "logo-upload", seriesId: "series", path: "other/logo.png" },
+      db,
+      actor("invited"),
+    ),
+    /Only the series creator/,
+  );
+  await assert.rejects(
+    seriesAction(
+      { operation: "logo-upload", seriesId: "series" },
+      db,
+      actor("outsider"),
+    ),
+    /not invited/,
+  );
+  await seriesAction(
+    { operation: "logo-upload", seriesId: "series", path: "other/logo.png" },
+    db,
+    actor("host"),
+  );
+  assert.match(uploads[0], /^series\/[0-9a-f-]{36}\.png$/);
+});

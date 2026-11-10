@@ -1,3 +1,4 @@
+import { seriesLogoUrl, seriesLogoAction } from "./series-logos.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createEvent, type Actor, type Event } from "./engine.ts";
 import { getProfile, rate } from "./community.ts";
@@ -62,7 +63,8 @@ export async function seriesAction(
       linked.data?.some((m) => m.series_id === s.id),
   );
   const manage = (s: any) => active && (global || s.owner_id === a.id);
-  const summary = (s: any) => ({
+  const summary = async (s: any) => ({
+    logoUrl: await seriesLogoUrl(db, s.logo_path),
     id: s.id,
     title: s.title,
     winnerAward: s.winner_award,
@@ -70,7 +72,10 @@ export async function seriesAction(
     canManage: manage(s),
   });
   if (input.operation === "list")
-    return { series: visible.map(summary), canCreate: active };
+    return {
+      series: await Promise.all(visible.map(summary)),
+      canCreate: active,
+    };
   if (input.operation === "create") {
     if (!active) throw new Error("Approved membership is required.");
     await rate(db, "series-create:" + a.id, 10, 86400);
@@ -130,7 +135,7 @@ export async function seriesAction(
       };
     });
     return {
-      ...summary(s),
+      ...(await summary(s)),
       editions: rows,
       leaderboard: leaderboard(rows),
       people: manage(s) ? people : [],
@@ -159,6 +164,8 @@ export async function seriesAction(
     throw new Error(
       "Only the series creator or site owner can manage its history and editions.",
     );
+  if (String(input.operation).startsWith("logo-"))
+    return await seriesLogoAction(input, db, s, a.id);
   if (input.operation === "create-edition") {
     const year = annualYear(input.year),
       coordinator = await getProfile(db, String(input.coordinatorId ?? a.id));
@@ -187,13 +194,11 @@ export async function seriesAction(
     check(error);
     if (!event || (!global && event.owner_id !== a.id))
       throw new Error("Only your own events can be attached.");
-    const { error: save } = await db
-      .from("bourbon_editions")
-      .insert({
-        series_id: s.id,
-        year: annualYear(input.year),
-        event_id: input.eventId,
-      });
+    const { error: save } = await db.from("bourbon_editions").insert({
+      series_id: s.id,
+      year: annualYear(input.year),
+      event_id: input.eventId,
+    });
     check(save);
     const users = [
       event.owner_id,

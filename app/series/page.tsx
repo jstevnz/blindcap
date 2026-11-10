@@ -2,6 +2,10 @@
 import { useEffect, useState } from "react";
 import { request } from "@/lib/browser";
 import MemberPicker from "@/app/components/MemberPicker";
+import SeriesLogoEditor, {
+  prepareSeriesLogo,
+  uploadSeriesLogo,
+} from "@/app/components/SeriesLogo";
 type Entry = {
   personId?: string;
   profileId?: string;
@@ -24,6 +28,7 @@ type Edition = {
   entries: Entry[] | null;
 };
 type Series = {
+  logoUrl?: string | null;
   id: string;
   title: string;
   winnerAward: string;
@@ -51,6 +56,8 @@ export default function SeriesPage() {
     [detail, setDetail] = useState<Detail | null>(null),
     [canCreate, setCanCreate] = useState(false),
     [title, setTitle] = useState(""),
+    [logo, setLogo] = useState<File | null>(null),
+    [createdId, setCreatedId] = useState<string | null>(null),
     [winner, setWinner] = useState("Yorktown Tumbler"),
     [swill, setSwill] = useState("Swill Award"),
     [year, setYear] = useState(currentYear),
@@ -116,6 +123,13 @@ export default function SeriesPage() {
     <main className="narrow">
       <a href="/">← Home</a>
       <p className="eyebrow">EVENT SERIES & HISTORY</p>
+      {detail?.logoUrl && (
+        <img
+          className="series-logo"
+          src={detail.logoUrl}
+          alt={`${detail.title} logo`}
+        />
+      )}
       <h1>{detail?.title ?? "Year after year."}</h1>
       {error && (
         <p role="alert" className="error">
@@ -140,6 +154,9 @@ export default function SeriesPage() {
             )}
             {list.map((s) => (
               <a className="event-link" key={s.id} href={`/series?id=${s.id}`}>
+                {s.logoUrl && (
+                  <img className="series-logo-thumb" src={s.logoUrl} alt="" />
+                )}
                 <strong>{s.title}</strong>
                 <span>History & leaderboard →</span>
               </a>
@@ -152,11 +169,18 @@ export default function SeriesPage() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   run(async () => {
-                    const s = await api("create", {
-                      title,
-                      winnerAward: winner,
-                      swillAward: swill,
-                    });
+                    const prepared = logo
+                      ? await prepareSeriesLogo(logo)
+                      : null;
+                    const s = createdId
+                      ? { id: createdId }
+                      : await api("create", {
+                          title,
+                          winnerAward: winner,
+                          swillAward: swill,
+                        });
+                    setCreatedId(s.id);
+                    if (prepared) await uploadSeriesLogo(s.id, prepared);
                     location.href = `/series?id=${s.id}`;
                   });
                 }}
@@ -189,7 +213,27 @@ export default function SeriesPage() {
                     onChange={(e) => setSwill(e.target.value)}
                   />
                 </label>
-                <button disabled={busy}>Create series</button>
+                <label>
+                  Series logo (optional)
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={busy}
+                    onChange={(e) => setLogo(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                {createdId && (
+                  <p>
+                    The series is created. Retry the logo upload or{" "}
+                    <a href={`/series?id=${createdId}`}>
+                      continue without a logo
+                    </a>
+                    .
+                  </p>
+                )}
+                <button disabled={busy}>
+                  {createdId ? "Save logo & open series" : "Create series"}
+                </button>
               </form>
             </section>
           )}
@@ -197,6 +241,13 @@ export default function SeriesPage() {
       ) : (
         <>
           <a href="/series">← All series</a>
+          {detail.canManage && (
+            <SeriesLogoEditor
+              seriesId={detail.id}
+              hasLogo={!!detail.logoUrl}
+              onSaved={load}
+            />
+          )}
           <section className="panel">
             <h2>The running leaderboard</h2>
             <p>
@@ -342,9 +393,11 @@ export default function SeriesPage() {
                         coordinatorId: coordinator?.id,
                       });
                       if (coordinator) {
-                            await load();
-                            setNotice(`Annual edition created. ${coordinator.name} can open it from their Events screen.`);
-                          } else location.href = `/event/${r.eventId}`;
+                        await load();
+                        setNotice(
+                          `Annual edition created. ${coordinator.name} can open it from their Events screen.`,
+                        );
+                      } else location.href = `/event/${r.eventId}`;
                     });
                   }}
                 >

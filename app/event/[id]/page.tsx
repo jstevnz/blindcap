@@ -142,6 +142,7 @@ export default function EventPage({
           <p className="eyebrow">
             {e.admin ? "THE HOST’S TABLE" : "YOUR SEAT AT THE TABLE"}
           </p>
+          {e.series?.logoUrl && <img className="series-logo" src={e.series.logoUrl} alt={`${e.series.title} logo`}/>}
           <h1>{e.title}</h1>
           {e.series && (
             <p>
