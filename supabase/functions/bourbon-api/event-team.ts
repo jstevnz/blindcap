@@ -1,8 +1,13 @@
+import { isBlindLocked } from "./blind-access.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isEventAdmin, type Event, type Actor } from "./engine.ts";
 import type { Profile } from "./community-shared.ts";
 export function canManageTeam(e: Event, a: Actor, p: Profile | null) {
-  return p?.status === "active" && (e.ownerId === a.id || p.role === "owner");
+  return (
+    !isBlindLocked(e, a.id) &&
+    p?.status === "active" &&
+    (e.ownerId === a.id || p.role === "owner")
+  );
 }
 export function setCoAdmins(
   e: Event,
@@ -30,6 +35,10 @@ export function setCoAdmins(
     new Set(ids).size !== ids.length
   )
     throw new Error("Choose up to eight distinct approved co-admins.");
+  if (ids.some((id) => isBlindLocked(e, id)))
+    throw new Error(
+      "A blind participant cannot be appointed as an event admin. They must use the emergency unlock in Event management.",
+    );
   if (ids.includes(e.ownerId))
     throw new Error("The primary host already has admin access.");
   return { ...structuredClone(e), adminIds: ids, revision: e.revision + 1 };
@@ -45,7 +54,11 @@ export async function eventTeam(
   const { data, error } = await db
     .from("bourbon_profiles")
     .select("id,display_name,status")
-    .in("id", [e.ownerId, ...(e.adminIds ?? [])]);
+    .in("id", [
+      e.ownerId,
+      ...(e.adminIds ?? []),
+      ...(e.blindUnlockedIds ?? []),
+    ]);
   if (error) throw new Error("Unable to load event admins.");
   return {
     revision: e.revision,
@@ -56,6 +69,8 @@ export async function eventTeam(
       name: r.display_name,
       status: r.status,
       primary: r.id === e.ownerId,
+      blind: isBlindLocked(e, r.id),
+      emergency: e.blindUnlockedIds?.includes(r.id) ?? false,
     })),
   };
 }

@@ -13,10 +13,14 @@ export default function MemberPicker({
   selected,
   onSelect,
   onClear,
+  clearLabel = "Use a guest seat instead",
+  hint = "Choose a profile, or enter a guest’s details below.",
 }: {
   selected?: { id: string; name: string };
   onSelect: (p: Member) => void;
   onClear: () => void;
+  clearLabel?: string;
+  hint?: string;
 }) {
   const [query, setQuery] = useState(""),
     [members, setMembers] = useState<Member[]>([]),
@@ -54,7 +58,7 @@ export default function MemberPicker({
             Community member: <strong>{selected.name}</strong>
           </p>
           <button type="button" className="text-button" onClick={onClear}>
-            Use a guest seat instead
+            {clearLabel}
           </button>
         </>
       ) : (
@@ -83,7 +87,7 @@ export default function MemberPicker({
               {p.displayName} <small>@{p.username}</small>
             </button>
           ))}
-          <small>Choose a profile, or enter a guest’s details below.</small>
+          <small>{hint}</small>
         </>
       )}
       {error && <p role="alert">{error}</p>}

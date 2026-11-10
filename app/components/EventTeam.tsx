@@ -7,7 +7,14 @@ type Team = {
   revision: number;
   canManage: boolean;
   primaryHostId: string;
-  admins: { id: string; name: string; status: string; primary: boolean }[];
+  admins: {
+    id: string;
+    name: string;
+    status: string;
+    primary: boolean;
+    blind?: boolean;
+    emergency?: boolean;
+  }[];
 };
 type Recipient = {
   participantId: string;
@@ -108,10 +115,16 @@ export default function EventTeam({
           <div className="row-between" key={p.id}>
             <p>
               <strong>{p.name}</strong> ·{" "}
-              {p.primary ? "Primary host" : "Co-admin"}
+              {p.blind
+                ? "Event creator · participating blind"
+                : p.emergency
+                  ? "Emergency admin"
+                  : p.primary
+                    ? "Primary host"
+                    : "Co-admin"}
               {p.status !== "active" ? " · Inactive" : ""}
             </p>
-            {team.canManage && !p.primary && (
+            {team.canManage && !p.primary && !p.emergency && (
               <button
                 className="text-button"
                 disabled={busy}

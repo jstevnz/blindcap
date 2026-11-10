@@ -173,6 +173,18 @@ export default function EventPage({
               : e.phase.toUpperCase()}
         </span>
       </div>
+      {e.blindParticipation === "blind" && (
+        <p className="notice">
+          You’re participating blind. You have the same access as any other
+          taster until the reveal.
+        </p>
+      )}
+      {e.blindParticipation === "unlocked" && (
+        <p className="notice">
+          Emergency host access is enabled. You are no longer marked blind for
+          this event.
+        </p>
+      )}
       <nav className="tabs" aria-label="Event views">
         {["taste", ...(e.admin ? ["host"] : []), "results"].map((t) => (
           <button
@@ -284,7 +296,11 @@ export default function EventPage({
                 </div>
               ))}
             </div>
-            {e.eventType === "bourbon-tasting" && <a href={`/event/${id}/rules`}>Read the Bourbon Tasting rules →</a>}
+            {e.eventType === "bourbon-tasting" && (
+              <a href={`/event/${id}/rules`}>
+                Read the Bourbon Tasting rules →
+              </a>
+            )}
           </section>
         </>
       )}

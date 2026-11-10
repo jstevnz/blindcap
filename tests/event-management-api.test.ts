@@ -314,8 +314,111 @@ test("co-admin event discovery and host controls work without allowing team dele
   }
 });
 
-test('event-scoped rules metadata is available to authorized hosts, not unaccepted invitees',async()=>{
- const host=await call(b,{action:'get',id:eb.id});assert.equal(host.status,200);assert.equal(host.data.eventType,'bourbon-tasting');
- const pending=await call(a,{action:'get',id:eb.id});assert.equal(pending.status,403);assert.equal(pending.data.eventType,undefined);
- const invalid=await call(a,{action:'create',title:'Unsupported',eventType:'wine'});assert.notEqual(invalid.status,200);assert.match(invalid.data.error,/event type/);
+test("event-scoped rules metadata is available to authorized hosts, not unaccepted invitees", async () => {
+  const host = await call(b, { action: "get", id: eb.id });
+  assert.equal(host.status, 200);
+  assert.equal(host.data.eventType, "bourbon-tasting");
+  const pending = await call(a, { action: "get", id: eb.id });
+  assert.equal(pending.status, 403);
+  assert.equal(pending.data.eventType, undefined);
+  const invalid = await call(a, {
+    action: "create",
+    title: "Unsupported",
+    eventType: "wine",
+  });
+  assert.notEqual(invalid.status, 200);
+  assert.match(invalid.data.error, /event type/);
+});
+
+test("blind primary host cannot bypass taster access through admin endpoints; explicit management unlock restores access", async () => {
+  const original = events[0].state;
+  try {
+    const lock = await call(a, {
+      action: "blind-access",
+      id: ea.id,
+      operation: "lock",
+      revision: original.revision,
+      title: original.title,
+      confirmed: true,
+      coordinatorId: b.id,
+    });
+    assert.equal(lock.status, 200);
+    let state = rpcs.find((x) => x.name === "save_bourbon_community_event")!
+      .args.p_state as typeof ea;
+    state = applyCommand(state, b, {
+      type: "setup",
+      participants: [
+        { name: "Host taster", email: a.email },
+        { name: "Another", email: c.email },
+      ],
+      bottles: [
+        { name: "SECRET BOTTLE A", ownerIndex: 0 },
+        { name: "SECRET BOTTLE B", ownerIndex: 1 },
+      ],
+    });
+    events[0].state = state;
+    Object.assign(events[0], { admin_ids: [b.id] });
+    const view = await call(a, { action: "get", id: ea.id });
+    assert.equal(view.status, 200);
+    assert.equal(view.data.admin, false);
+    assert.equal(view.data.blindParticipation, "blind");
+    assert.ok(!JSON.stringify(view.data).includes("SECRET BOTTLE"));
+    for (const action of [
+      "team",
+      "mailing-list",
+      "invite",
+      "member-email-details",
+    ]) {
+      const denied = await call(a, { action, id: ea.id });
+      assert.notEqual(denied.status, 200);
+    }
+    const team = await call(a, {
+      action: "team-set",
+      id: ea.id,
+      revision: state.revision,
+      adminIds: [a.id],
+    });
+    assert.notEqual(team.status, 200);
+    const del = await call(a, {
+      action: "delete",
+      id: ea.id,
+      revision: state.revision,
+      title: state.title,
+      confirmed: true,
+    });
+    assert.equal(del.status, 403);
+    assert.equal(rpcs.length, 0);
+    const deniedUnlock = await call(a, {
+      action: "blind-access",
+      id: ea.id,
+      operation: "unlock",
+      revision: state.revision,
+      title: state.title,
+      confirmed: false,
+    });
+    assert.notEqual(deniedUnlock.status, 200);
+    const unlock = await call(a, {
+      action: "blind-access",
+      id: ea.id,
+      operation: "unlock",
+      revision: state.revision,
+      title: state.title,
+      confirmed: true,
+    });
+    assert.equal(unlock.status, 200);
+    const recovered = rpcs.find(
+      (x) => x.name === "save_bourbon_community_event",
+    )!.args.p_state as typeof ea;
+    assert.deepEqual(recovered.groups, state.groups);
+    assert.deepEqual(recovered.bottles, state.bottles);
+    assert.equal(recovered.blindAccessLog?.at(-1)?.action, "unlock");
+    events[0].state = recovered;
+    const hostView = await call(a, { action: "get", id: ea.id });
+    assert.equal(hostView.status, 200);
+    assert.equal(hostView.data.admin, true);
+    assert.equal(hostView.data.blindParticipation, "unlocked");
+  } finally {
+    events[0].state = original;
+    Object.assign(events[0], { admin_ids: [] });
+  }
 });

@@ -1,3 +1,4 @@
+import {isBlindLocked,blindAccessChange} from "./blind-access.ts";
 import {canManageTeam,setCoAdmins,eventTeam,mailingList} from "./event-team.ts";
 import {seriesLogoUrl} from "./series-logos.ts";
 import { seriesAction } from "./series.ts";
@@ -222,7 +223,7 @@ Deno.serve(async (req: Request) => {
               communityProfile,
             ),
           )
-          .filter((row) => global || row.canOpen)
+          .filter((row) => global || row.canOpen || row.hostedByMe)
           .sort(
             (x, y) =>
               y.createdAt.localeCompare(x.createdAt) ||
@@ -302,6 +303,16 @@ Deno.serve(async (req: Request) => {
     if (error) throw new Error("The database could not be reached.");
     if (!data) return json({ error: "Event not found." }, 404);
     const event = data.state as Event;
+    if(input.action === "blind-access") {
+      const next=blindAccessChange(event,a,communityProfile,{operation:input.operation,revision:input.revision,title:input.title,confirmed:input.confirmed,coordinatorId:input.coordinatorId},new Date().toISOString());
+      if(input.operation==="lock") {
+        const coordinator=await getProfile(db,String(input.coordinatorId));
+        if(coordinator?.status!=="active")throw new Error("Select another approved coordinator.");
+      }
+      const {data:saved,error}=await db.rpc("save_bourbon_community_event",{p_id:event.id,p_revision:event.revision,p_state:next,p_member_emails:next.participants.map(p=>p.email).filter(Boolean)});
+      if(error||!saved)throw new Error("The event changed. Refresh Event management and confirm again.");
+      return json({saved:true,blindParticipation:input.operation==="lock"?"blind":"unlocked"});
+    }
     if(input.action === "team") return json(await eventTeam(db,event,a,communityProfile));
     if(input.action === "team-set") {
       const next=setCoAdmins(event,a,communityProfile,input.adminIds,input.revision);
@@ -315,6 +326,7 @@ Deno.serve(async (req: Request) => {
     }
     if(input.action === "mailing-list") return json(await mailingList(db,event,a));
     if (input.action === "delete") {
+      if(isBlindLocked(event,a.id))return json({error:"End blind participation from Event management before making admin changes."},403);
       if (!canDeleteEvent(event.ownerId, a.id, communityProfile))
         return json(
           {

@@ -1,4 +1,5 @@
 "use client";
+import BlindParticipationDialog from "@/app/components/BlindParticipationDialog";
 import { useCallback, useEffect, useState } from "react";
 import { request } from "@/lib/browser";
 import type { EventSummary } from "@/lib/event-management";
@@ -16,6 +17,11 @@ export default function Events() {
     [search, setSearch] = useState(""),
     [filter, setFilter] = useState("all"),
     [target, setTarget] = useState<EventSummary | null>(null),
+    [blindTarget, setBlindTarget] = useState<{
+      event: EventSummary;
+      mode: "lock" | "unlock";
+    } | null>(null),
+    [blindError, setBlindError] = useState(""),
     [busy, setBusy] = useState(false),
     [refresh, setRefresh] = useState(0);
   const load = useCallback(async () => {
@@ -25,6 +31,31 @@ export default function Events() {
   useEffect(() => {
     load().catch((e) => setError(e.message));
   }, [load]);
+  async function changeBlind(coordinatorId?: string) {
+    if (!blindTarget || busy) return;
+    setBusy(true);
+    setBlindError("");
+    try {
+      await request(`/api/events/${blindTarget.event.id}/blind-access`, {
+        operation: blindTarget.mode,
+        revision: blindTarget.event.revision,
+        title: blindTarget.event.title,
+        confirmed: true,
+        coordinatorId,
+      });
+      setNotice(
+        blindTarget.mode === "lock"
+          ? "Blind participation enabled. Your coordinator can now invite your profile as a taster."
+          : "Emergency host access enabled. You are no longer blind for this event.",
+      );
+      setBlindTarget(null);
+      await load();
+    } catch (e) {
+      setBlindError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function remove() {
     if (!target || busy) return;
     setBusy(true);
@@ -149,9 +180,11 @@ export default function Events() {
             {events.map((e) => (
               <article className="managed-event" key={e.id}>
                 <p className="eyebrow">
-                  {e.hostedByMe
-                    ? "YOU’RE HOSTING"
-                    : `HOSTED BY ${e.hostName.toUpperCase()}`}
+                  {e.blindParticipation === "blind"
+                    ? "PARTICIPATING BLIND"
+                    : e.hostedByMe
+                      ? "YOU’RE HOSTING"
+                      : `HOSTED BY ${e.hostName.toUpperCase()}`}
                 </p>
                 <h3>{e.title}</h3>
                 <p className="muted">
@@ -171,7 +204,46 @@ export default function Events() {
                       ? "Setup"
                       : `${e.phase.charAt(0).toUpperCase() + e.phase.slice(1)} round`}
                 </p>
+                {e.blindParticipation === "blind" && (
+                  <p className="notice">
+                    Your event access is limited to your taster seat. Host
+                    controls stay locked.
+                  </p>
+                )}
+                {e.blindParticipation === "unlocked" && (
+                  <p className="notice">
+                    Emergency access enabled. You are no longer marked blind for
+                    this event.
+                    {e.blindChangedAt
+                      ? ` Recorded ${new Date(e.blindChangedAt).toLocaleString()}.`
+                      : ""}
+                  </p>
+                )}
                 <div className="actions">
+                  {e.canLockBlind && (
+                    <button
+                      className="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setBlindError("");
+                        setBlindTarget({ event: e, mode: "lock" });
+                      }}
+                    >
+                      Participate blind
+                    </button>
+                  )}
+                  {e.canUnlockBlind && (
+                    <button
+                      className="secondary danger-outline"
+                      disabled={busy}
+                      onClick={() => {
+                        setBlindError("");
+                        setBlindTarget({ event: e, mode: "unlock" });
+                      }}
+                    >
+                      Emergency host unlock
+                    </button>
+                  )}
                   {e.canOpen && (
                     <a className="event-open" href={`/event/${e.id}`}>
                       Open event →
@@ -200,6 +272,18 @@ export default function Events() {
         </>
       ) : (
         !error && <p>Loading your events…</p>
+      )}
+      {blindTarget && (
+        <BlindParticipationDialog
+          event={blindTarget.event}
+          mode={blindTarget.mode}
+          busy={busy}
+          error={blindError}
+          onCancel={() => {
+            if (!busy) setBlindTarget(null);
+          }}
+          onConfirm={changeBlind}
+        />
       )}
       {target && (
         <DeleteEventDialog

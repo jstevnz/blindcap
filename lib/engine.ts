@@ -1,3 +1,4 @@
+import {isBlindLocked} from "./blind-access.ts";
 import {requireEventType,eventTypeFor,type EventType} from "./event-types.ts";
 import { tournamentPlan, validCount } from "./tournament.ts";
 import { randomInt, randomUUID } from "node:crypto";
@@ -37,6 +38,9 @@ export type Group = {
   runoffKey?: string;
 };
 export type Event = {
+  blindParticipantIds?: string[];
+  blindUnlockedIds?: string[];
+  blindAccessLog?: {actorId:string;action:"lock"|"unlock";at:string}[];
   eventType?: EventType;
   adminIds?: string[];
   id: string;
@@ -103,7 +107,7 @@ export function member(e: Event, a: Actor) {
   );
 }
 export function isEventAdmin(e: Event, a: Actor) {
-  return e.ownerId === a.id || !!e.adminIds?.includes(a.id);
+  return !isBlindLocked(e,a.id) && (e.ownerId === a.id || !!e.adminIds?.includes(a.id) || !!e.blindUnlockedIds?.includes(a.id));
 }
 export function authorized(e: Event, a: Actor) {
   return isEventAdmin(e,a) || !!member(e, a);
@@ -580,6 +584,7 @@ export function snapshot(e: Event, a: Actor) {
     phase: e.phase,
     revealed: e.revealed,
     admin,
+    blindParticipation:isBlindLocked(e,a.id)?"blind" as const:e.blindUnlockedIds?.includes(a.id)?"unlocked" as const:"standard" as const,
     memberInvitations:[] as {participantId:string;status:string}[],
     participantId: p?.id ?? null,
     participants: admin
