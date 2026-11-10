@@ -1,3 +1,4 @@
+import {requireEventType,eventTypeFor} from "./event-types.ts";
 import { seriesLogoUrl, seriesLogoAction } from "./series-logos.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createEvent, type Actor, type Event } from "./engine.ts";
@@ -68,6 +69,7 @@ export async function seriesAction(
     logoUrl: await seriesLogoUrl(db, s.logo_path),
     id: s.id,
     title: s.title,
+    eventType:requireEventType(s.event_type),
     winnerAward: s.winner_award,
     swillAward: s.swill_award,
     canManage: manage(s),
@@ -84,6 +86,7 @@ export async function seriesAction(
       .from("bourbon_series")
       .insert({
         owner_id: a.id,
+        event_type:requireEventType(input.eventType),
         title: text(input.title, 100),
         winner_award: text(input.winnerAward ?? "Yorktown Tumbler", 80),
         swill_award: text(input.swillAward ?? "Swill Award", 80),
@@ -168,6 +171,8 @@ export async function seriesAction(
   if (String(input.operation).startsWith("logo-"))
     return await seriesLogoAction(input, db, s, a.id);
   if (input.operation === "create-edition") {
+    const type=requireEventType(input.eventType ?? s.event_type);
+    if(type!==requireEventType(s.event_type))throw new Error("The edition type must match its series.");
     const year = annualYear(input.year),
       coordinator = await getProfile(db, String(input.coordinatorId ?? a.id));
     if (coordinator?.status !== "active")
@@ -176,6 +181,7 @@ export async function seriesAction(
       coordinator.id,
       `${s.title} ${year}`,
       Number(input.tasterCount ?? 12),
+      type,
     );
     const { error } = await db.rpc("bourbon_create_edition", {
       p_series: s.id,

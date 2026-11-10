@@ -1,0 +1,9 @@
+# Event types and event-scoped rules
+
+Remove the scoring-rules link from Home for both signed-out and signed-in visitors. The legacy /rules route redirects to Home. New one-time events, series and annual-edition forms offer an Event type selector with Bourbon Tasting as the only option. Both frontend and backend use a matching supported-type registry; the backend rejects unsupported formats rather than silently applying Bourbon scoring.
+
+New live events store eventType in their existing JSON state; legacy events without it resolve to Bourbon Tasting without rewriting their ballots or state. Series receive a defaulted event_type column. Annual editions and linked events must match their series. Adding other formats later will require their own supported scoring/rules implementation before exposing another selection.
+
+Bourbon Tasting rules are available from the event tasting room at /event/[id]/rules. The page checks the same verified invitation access as the event through its authenticated API and renders rules only for the Bourbon Tasting type. Hosts can preview; community participants must be approved and accept their event invitation; private guests must redeem their assigned invitation. A mere series-history invitation does not expose live-event rules or grant voting access. Static rules text is not confidential data; the application's availability is gated by event access. The rules reflect the series' award names and link back to the specific event.
+
+No changes to scoring calculations, membership approval, ballot permissions or existing round weights. Validation: legacy compatibility, unsupported type rejection, backend invitation checks, registry parity, additive migration rehearsal, full 129-test suite and production build. Local checks verify the public Home has no rules link and /rules redirects. Deployment order: additive series column, extended authenticated backend, exact reviewed GitHub commit and Vercel production release.

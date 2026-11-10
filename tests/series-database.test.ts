@@ -68,6 +68,7 @@ test("series migration preserves event state, rejects public access, and atomica
       ),
     );
     await db.exec(await readFile(new URL('../supabase/migrations/20261110030659_profile_first_and_last_names.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261110035943_event_types.sql',import.meta.url),'utf8'));
     assert.deepEqual(
       (await db.query<{ state: unknown }>("select state from bourbon_events"))
         .rows[0].state,

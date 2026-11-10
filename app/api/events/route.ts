@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     return await backend({
       action: "create",
       title: data.title,
+      eventType:data.eventType,
       tasterCount: data.tasterCount,
     });
   } catch (e) {

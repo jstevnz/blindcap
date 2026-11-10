@@ -313,3 +313,9 @@ test("co-admin event discovery and host controls work without allowing team dele
     Object.assign(events[0], { admin_ids: [] });
   }
 });
+
+test('event-scoped rules metadata is available to authorized hosts, not unaccepted invitees',async()=>{
+ const host=await call(b,{action:'get',id:eb.id});assert.equal(host.status,200);assert.equal(host.data.eventType,'bourbon-tasting');
+ const pending=await call(a,{action:'get',id:eb.id});assert.equal(pending.status,403);assert.equal(pending.data.eventType,undefined);
+ const invalid=await call(a,{action:'create',title:'Unsupported',eventType:'wine'});assert.notEqual(invalid.status,200);assert.match(invalid.data.error,/event type/);
+});

@@ -284,7 +284,7 @@ export default function EventPage({
                 </div>
               ))}
             </div>
-            <a href="/rules">How scoring works →</a>
+            {e.eventType === "bourbon-tasting" && <a href={`/event/${id}/rules`}>Read the Bourbon Tasting rules →</a>}
           </section>
         </>
       )}

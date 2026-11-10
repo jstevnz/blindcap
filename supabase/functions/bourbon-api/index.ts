@@ -281,7 +281,7 @@ Deno.serve(async (req: Request) => {
       if (typeof input.title !== "string")
         throw new Error("Enter an event name.");
       await rate(db, "event-create:" + a.id, 10, 86400);
-      const event = createEvent(a.id, input.title, input.tasterCount ?? 12);
+      const event = createEvent(a.id, input.title, input.tasterCount ?? 12,input.eventType);
       const { error } = await db.from("bourbon_events").insert({
         id: event.id,
         owner_id: a.id,

@@ -1,4 +1,5 @@
 "use client";
+import EventTypePicker from "@/app/components/EventTypePicker";
 import { useEffect, useState } from "react";
 import { browser, configured, request } from "@/lib/browser";
 import { tournamentPlan } from "@/lib/tournament";
@@ -163,8 +164,12 @@ export default function Home() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+                  const selectedEventType = new FormData(e.currentTarget).get(
+                    "eventType",
+                  );
                   act(async () => {
                     const event = await request("/api/events", {
+                      eventType: selectedEventType,
                       title,
                       tasterCount: count,
                     });
@@ -182,6 +187,7 @@ export default function Home() {
                     required
                   />
                 </label>
+                <EventTypePicker />
                 <label>
                   Number of tasters / bottles
                   <select
@@ -365,9 +371,6 @@ export default function Home() {
           </p>
         </div>
       </section>
-      <a className="text-button" href="/rules">
-        Read the scoring rules →
-      </a>
     </main>
   );
 }

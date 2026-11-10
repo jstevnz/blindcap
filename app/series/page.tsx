@@ -1,4 +1,5 @@
 "use client";
+import EventTypePicker from "@/app/components/EventTypePicker";
 import { useEffect, useState } from "react";
 import { request } from "@/lib/browser";
 import MemberPicker from "@/app/components/MemberPicker";
@@ -168,6 +169,9 @@ export default function SeriesPage() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+                  const selectedEventType = new FormData(e.currentTarget).get(
+                    "eventType",
+                  );
                   run(async () => {
                     const prepared = logo
                       ? await prepareSeriesLogo(logo)
@@ -176,6 +180,7 @@ export default function SeriesPage() {
                       ? { id: createdId }
                       : await api("create", {
                           title,
+                          eventType: selectedEventType,
                           winnerAward: winner,
                           swillAward: swill,
                         });
@@ -195,6 +200,7 @@ export default function SeriesPage() {
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </label>
+                <EventTypePicker />
                 <label>
                   Winner’s award
                   <input
@@ -386,9 +392,13 @@ export default function SeriesPage() {
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
+                    const selectedEventType = new FormData(e.currentTarget).get(
+                      "eventType",
+                    );
                     run(async () => {
                       const r = await api("create-edition", {
                         year,
+                        eventType: selectedEventType,
                         tasterCount: count,
                         coordinatorId: coordinator?.id,
                       });
@@ -412,6 +422,7 @@ export default function SeriesPage() {
                       onChange={(e) => setYear(Number(e.target.value))}
                     />
                   </label>
+                  <EventTypePicker />
                   <label>
                     Tasters / bottles
                     <select

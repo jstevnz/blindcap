@@ -1,3 +1,4 @@
+import {requireEventType,eventTypeFor,type EventType} from "./event-types.ts";
 import { tournamentPlan, validCount } from "./tournament.ts";
 import { randomInt, randomUUID } from "node:crypto";
 export type Stage = "opening" | "semifinal" | "final";
@@ -36,6 +37,7 @@ export type Group = {
   runoffKey?: string;
 };
 export type Event = {
+  eventType?: EventType;
   adminIds?: string[];
   id: string;
   title: string;
@@ -67,7 +69,9 @@ export function createEvent(
   ownerId: string,
   title: string,
   tasterCount = 12,
+  eventType: unknown = "bourbon-tasting",
 ): Event {
+  const type=requireEventType(eventType);
   assert(
     validCount(tasterCount),
     "Choose a whole number of tasters from 2 to 16.",
@@ -79,6 +83,7 @@ export function createEvent(
   return {
     id: randomUUID(),
     title: title.trim(),
+    eventType:type,
     tasterCount,
     ownerId,
     revision: 0,
@@ -568,6 +573,7 @@ export function snapshot(e: Event, a: Actor) {
     id: e.id,
     series: null as {id:string;title:string;year:number;logoUrl?:string|null;winnerAward:string;swillAward:string}|null,
     title: e.title,
+    eventType:eventTypeFor(e),
     tasterCount: eventSize(e),
     plan: tournamentPlan(eventSize(e)),
     revision: e.revision,
