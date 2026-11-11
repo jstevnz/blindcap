@@ -1145,3 +1145,72 @@ body:has(.public-home) footer {
     width: min(100%, 480px);
   }
 }
+
+.blindcap-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 148px;
+  color: var(--ink);
+}
+.blindcap-loading img {
+  display: block;
+  width: 48px;
+  height: 48px;
+}
+.blindcap-loading-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.blindcap-loading-dots > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: blindcap-dot 1.2s ease-in-out infinite;
+}
+.blindcap-loading-dots > span:nth-child(2) { animation-delay: .15s; }
+.blindcap-loading-dots > span:nth-child(3) { animation-delay: .3s; }
+.blindcap-loading-label {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: normal;
+}
+.blindcap-navigation-status {
+  position: fixed;
+  z-index: 20;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: blindcap-navigation-in .12s .18s both;
+}
+.blindcap-loading-compact {
+  min-height: 0;
+  padding: 12px 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  box-shadow: 0 8px 24px #243f3626;
+}
+.blindcap-loading-compact img {
+  width: 32px;
+  height: 32px;
+}
+@keyframes blindcap-dot {
+  0%, 60%, 100% { opacity: .4; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+@keyframes blindcap-navigation-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blindcap-loading-dots > span,
+  .blindcap-navigation-status {
+    animation: none;
+  }
+}

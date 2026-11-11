@@ -1,4 +1,5 @@
 "use client";
+import LoadingLink from "@/app/components/LoadingLink";
 import { PublicTasting, SampleScorecard } from "./components/PublicTasting";
 import { useEffect, useState } from "react";
 import { browser, configured, request } from "@/lib/browser";
@@ -85,7 +86,7 @@ export default function Home() {
           </p>
         )}
         {!user && <div className="public-hero-actions">
-          <a className="button" href="/register">Create a profile</a>
+          <LoadingLink className="button" href="/register">Create a profile</LoadingLink>
           <a href="#play-a-round">See how a round works ↓</a>
         </div>}
         {!user && <div className="hero-rule">
@@ -139,22 +140,22 @@ export default function Home() {
             </p>
             {self?.profile && !member && (
               <p>
-                <a href="/account">My profile & password →</a>
+                <LoadingLink href="/account">My profile & password →</LoadingLink>
               </p>
             )}
             {member ? (
               <div className="actions home-navigation">
-                <a className="event-link" href="/events">
+                <LoadingLink className="event-link" href="/events">
                   <strong>Events</strong>
                   <span>View & manage →</span>
-                </a>
+                </LoadingLink>
                 {self.profile?.role === "owner" && (
-                  <a className="event-link" href="/members">
+                  <LoadingLink className="event-link" href="/members">
                     <strong>Signup reviews</strong>
                     <span>Approve pending profiles →</span>
-                  </a>
+                  </LoadingLink>
                 )}
-                <a className="event-link" href="/account"><strong>My Profile and Password</strong><span>Profile, event history & awards →</span></a>
+                <LoadingLink className="event-link" href="/account"><strong>My Profile and Password</strong><span>Profile, event history & awards →</span></LoadingLink>
               </div>
             ) : self?.profile?.status === "pending" ? (
               <p className="notice">
@@ -165,7 +166,7 @@ export default function Home() {
             ) : (
               <div className="event-list">
                 {events.map((e) => (
-                  <a className="event-link" key={e.id} href={`/event/${e.id}`}>
+                  <LoadingLink className="event-link" key={e.id} href={`/event/${e.id}`}>
                     <span>
                       <strong>{e.title}</strong>
                       <small>
@@ -173,14 +174,14 @@ export default function Home() {
                       </small>
                     </span>
                     <span>↗</span>
-                  </a>
+                  </LoadingLink>
                 ))}
                 {!events.length && (
                   <p>Your accepted events will appear here.</p>
                 )}
               </div>
             )}
-            {!member && self?.profile?.status !== "pending" && <p className="fine">Guest invitations continue to work. <a href="/register">Create a profile</a> to keep your history and host events.</p>}
+            {!member && self?.profile?.status !== "pending" && <p className="fine">Guest invitations continue to work. <LoadingLink href="/register">Create a profile</LoadingLink> to keep your history and host events.</p>}
             <button
               className="text-button"
               onClick={() =>
@@ -289,10 +290,10 @@ export default function Home() {
                 </button>
               )}
             </div>
-            <a className="event-link" href="/register">
+            <LoadingLink className="event-link" href="/register">
               <strong>Sign up</strong>
               <span>Create your profile →</span>
-            </a>
+            </LoadingLink>
             <p className="fine">
               Administrator approval is required before joining events or
               hosting.

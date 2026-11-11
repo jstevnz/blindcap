@@ -1,4 +1,6 @@
 "use client";
+import BlindcapLoading from "@/app/components/BlindcapLoading";
+import LoadingLink from "@/app/components/LoadingLink";
 import BlindParticipationDialog from "@/app/components/BlindParticipationDialog";
 import { useCallback, useEffect, useState } from "react";
 import { request } from "@/lib/browser";
@@ -8,7 +10,7 @@ import TastingHistory from "@/app/components/TastingHistory";
 import CommunityDashboard from "@/app/components/CommunityDashboard";
 import CreateEvent, {type EventSeries} from "@/app/components/CreateEvent";
 import dynamic from "next/dynamic";
-const SeriesDetail=dynamic(()=>import("@/app/components/SeriesDetail"),{loading:()=> <main className="narrow"><p>Loading series…</p></main>});
+const SeriesDetail=dynamic(()=>import("@/app/components/SeriesDetail"),{loading:()=> <main className="narrow"><BlindcapLoading label="Loading series…" /></main>});
 type Catalog = {
   events: EventSummary[];
   communityOwner: boolean;
@@ -120,10 +122,10 @@ export default function Events() {
       <p className="eyebrow">YOUR BLINDCAP COMMUNITY</p>
       <div className="row-between">
         <h1>Events.</h1>
-        <a href="/">← Home</a>
+        <LoadingLink href="/">← Home</LoadingLink>
       </div>
       <p>Your invitations, events and annual series, together in one place.</p>
-      <div className="actions section-navigation"><a className="button" href="/events?create=1">Create an Event</a><a href="/events/history">My history & awards →</a></div>
+      <div className="actions section-navigation"><a className="button" href="/events?create=1">Create an Event</a><LoadingLink href="/events/history">My history & awards →</LoadingLink></div>
       {error && (
         <p className="error" role="alert">
           {error}
@@ -256,9 +258,9 @@ export default function Events() {
                     </button>
                   )}
                   {e.canOpen && (
-                    <a className="event-open" href={`/event/${e.id}`}>
+                    <LoadingLink className="event-open" href={`/event/${e.id}`}>
                       Open event →
-                    </a>
+                    </LoadingLink>
                   )}
                   {e.canDelete && (
                     <button
@@ -282,7 +284,7 @@ export default function Events() {
           {catalog.member && activeView==="mine" && <TastingHistory key={refresh} />}
         </>
       ) : (
-        !error && <p>Loading your events…</p>
+        !error && <BlindcapLoading label="Loading your events…" />
       )}
       {blindTarget && (
         <BlindParticipationDialog

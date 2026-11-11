@@ -1,4 +1,5 @@
 "use client";
+import BlindcapLoading from "@/app/components/BlindcapLoading";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import type { Snapshot, Entry, Command } from "@/lib/engine";
 import MemberPicker from "@/app/components/MemberPicker";
@@ -132,7 +133,7 @@ export default function EventPage({
             {error} <a href="/">Return to sign in</a>
           </p>
         ) : (
-          <p>Loading your event…</p>
+          <BlindcapLoading label="Loading your event…" />
         )}
       </main>
     );

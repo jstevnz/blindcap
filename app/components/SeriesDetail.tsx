@@ -1,4 +1,5 @@
 "use client";
+import BlindcapLoading from "@/app/components/BlindcapLoading";
 import EventTypePicker from "@/app/components/EventTypePicker";
 import { useEffect, useState } from "react";
 import { request } from "@/lib/browser";
@@ -145,7 +146,7 @@ export default function SeriesPage() {
           {notice}
         </p>
       )}
-      {!detail ? (<p>Loading series…</p>) : (
+      {!detail ? (<BlindcapLoading label="Loading series…" />) : (
         <>
           <a href="/events">← Events</a>
           {detail.canManage && (

@@ -1,4 +1,5 @@
 "use client";
+import BlindcapLoading from "@/app/components/BlindcapLoading";
 import { useEffect, useState } from "react";
 import { request } from "@/lib/browser";
 type History = {
@@ -53,7 +54,7 @@ export default function TastingHistory() {
         <p>
           Revisit your submitted bottles, awards, fellow participants and revealed outcomes. Your scoring selections remain private.
         </p>
-        {loading&&<p>Loading your history…</p>}
+        {loading&&<BlindcapLoading label="Loading your history…" />}
         {upcoming.map(e=><a className="event-link" key={e.id} href={`/event/${e.id}`}><strong>{e.title}</strong><span>{e.phase==="setup"?"Complete event profile":"Open event"} →</span>{e.ownBottle&&<small>Your bottle: {e.ownBottle.name}{e.ownBottle.proof?` · ${e.ownBottle.proof} proof`:""}</small>}</a>)}
         {!loading&&!history.length&&!historical.length&&!upcoming.length&&<p>Your participated events will appear here. Revealed results and recorded historical years are saved here.</p>}
         {historical.map(h=><details key={`${h.seriesId}:${h.year}`}><summary>{h.title} · {h.year}</summary><p><strong>Your bottle: {h.own.bottle || "Not recorded"}</strong></p>{h.own.award&&<p>Your award: {h.own.award==="winner"?h.winnerAward:h.swillAward}</p>}<p><a href={`/events?series=${h.seriesId}`}>Open series, participants & outcomes →</a></p><ul>{h.entries.map((e,i)=><li key={i}>{e.name} · {e.bottle||"Bottle not recorded"}{e.place?` · Place ${e.place}`:""}{e.award?` · ${e.award==="winner"?h.winnerAward:h.swillAward}`:""}</li>)}</ul></details>)}

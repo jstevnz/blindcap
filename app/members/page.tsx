@@ -1,4 +1,5 @@
 "use client";
+import BlindcapLoading from "@/app/components/BlindcapLoading";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CommunityDashboard from "@/app/components/CommunityDashboard";
 import { request } from "@/lib/browser";
@@ -148,7 +149,7 @@ export default function Members() {
           ))}
         </section>
       )}
-      {!rows && !error && <p>Loading signup reviews…</p>}
+      {!rows && !error && <BlindcapLoading label="Loading signup reviews…" />}
       {rows && <CommunityDashboard owner communityOnly />}
       {target && (
         <dialog
