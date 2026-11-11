@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "Blindcap",
   description:
     "Build your own blind competition. Invite your group, compare anonymous entries and reveal the winner with Blindcap.",
-  icons: { icon: { url: "/brand/blindcap-b.png", type: "image/png", sizes: "128x128" } },
+  icons: { icon: { url: "/brand/blindcap-b.png?v=2", type: "image/png", sizes: "128x128" } },
   robots: { index: false, follow: false },
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
