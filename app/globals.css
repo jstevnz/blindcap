@@ -1044,13 +1044,41 @@ body:has(.public-home) .public-footer-content {
 .phone-previews figure {
   margin: 0;
 }
-.phone-previews img {
+.phone-frame {
+  position: relative;
+  aspect-ratio: 100 / 206;
+  overflow: hidden;
+  padding-block: 12% 6%;
+  border: clamp(4px, .55vw, 7px) solid #202421;
+  border-radius: 12% / 6%;
+  background: #f3f0e7;
+  box-shadow: 0 0 0 1px #838580, 0 10px 25px #243f3626;
+}
+.phone-frame::before,
+.phone-frame::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #202421;
+  border-radius: 999px;
+}
+.phone-frame::before {
+  top: 2%;
+  width: 28%;
+  height: 3.6%;
+}
+.phone-frame::after {
+  bottom: 1.2%;
+  width: 32%;
+  height: 1%;
+}
+.phone-frame img {
   display: block;
   width: 100%;
-  height: auto;
-  border: 5px solid var(--ink);
-  border-radius: 18px;
-  box-shadow: 0 10px 25px #243f361a;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
 }
 .phone-previews figcaption {
   margin-top: 8px;

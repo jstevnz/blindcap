@@ -59,12 +59,16 @@ export function PublicTasting() {
         </div>
         <div className="phone-previews" aria-label="BlindCap mobile screenshots using sample data">
           <figure>
-            <Image src="/preview/mobile-bottle.jpg" width={375} height={812} alt="BlindCap on a phone, showing the form to enter your bottle, distillery and proof" />
-            <figcaption>Add your bottle</figcaption>
+            <div className="phone-frame">
+              <Image src="/preview/mobile-bottle.jpg" width={375} height={812} alt="BlindCap on a phone, showing the form to enter your bottle, distillery and proof" />
+            </div>
+            <figcaption>Add a Bottle</figcaption>
           </figure>
           <figure>
-            <Image src="/preview/mobile-ballot.jpg" width={320} height={812} alt="BlindCap mobile ballot with four tasting ratings and a favorite rank for the first mystery pour" />
-            <figcaption>Score a mystery pour</figcaption>
+            <div className="phone-frame">
+              <Image src="/preview/mobile-ballot.jpg" width={320} height={812} alt="BlindCap mobile ballot with four tasting ratings and a favorite rank for the first mystery pour" />
+            </div>
+            <figcaption>Score Mystery Pours</figcaption>
           </figure>
         </div>
       </section>
