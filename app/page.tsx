@@ -1,4 +1,5 @@
 "use client";
+import MemberPortal from "./components/MemberPortal";
 import LoadingLink from "@/app/components/LoadingLink";
 import { PublicTasting, SampleScorecard } from "./components/PublicTasting";
 import { useEffect, useState } from "react";
@@ -6,6 +7,7 @@ import { browser, configured, request } from "@/lib/browser";
 type Self = {
   profile: {
     username: string;
+    avatarUrl?: string | null;
     displayName: string;
     status: string;
     role: string;
@@ -54,7 +56,17 @@ export default function Home() {
       setBusy(false);
     }
   }
-  const member = self?.profile?.status === "active";
+  const signOut = () => act(async () => {
+    const { error } = await browser().auth.signOut();
+    if (error) throw error;
+    setUser("");
+    setSelf(null);
+    setEvents([]);
+  });
+
+  if (user && self?.profile?.status === "active") {
+    return <MemberPortal profile={self.profile} signingOut={busy} onSignOut={signOut} error={error} />;
+  }
   return (
     <main className={user ? undefined : "public-home"}>
       <div className={user ? undefined : "public-hero"}>
@@ -123,11 +135,7 @@ export default function Home() {
       <section className="panel welcome" id="sign-in">
         <p className="eyebrow">YOUR SEAT AT THE TABLE</p>
         <h2>
-          {member
-            ? `Welcome, ${self.profile!.displayName}.`
-            : user
-              ? "Welcome back."
-              : "Your next event starts here."}
+          {user ? "Welcome back." : "Your next event starts here."}
         </h2>
         {!configured ? (
           <p>The tasting room is being prepared.</p>
@@ -138,26 +146,12 @@ export default function Home() {
                 ? "Signed in to your guest seat"
                 : `Signed in as ${user}`}
             </p>
-            {self?.profile && !member && (
+            {self?.profile && (
               <p>
                 <LoadingLink href="/account">My profile & password →</LoadingLink>
               </p>
             )}
-            {member ? (
-              <div className="actions home-navigation">
-                <LoadingLink className="event-link" href="/events">
-                  <strong>Events</strong>
-                  <span>View & manage →</span>
-                </LoadingLink>
-                {self.profile?.role === "owner" && (
-                  <LoadingLink className="event-link" href="/members">
-                    <strong>Signup reviews</strong>
-                    <span>Approve pending profiles →</span>
-                  </LoadingLink>
-                )}
-                <LoadingLink className="event-link" href="/account"><strong>My Profile and Password</strong><span>Profile, event history & awards →</span></LoadingLink>
-              </div>
-            ) : self?.profile?.status === "pending" ? (
+            {self?.profile?.status === "pending" ? (
               <p className="notice">
                 Your profile is pending administrator approval. You can edit
                 your profile while waiting. Hosting and event invitations become
@@ -181,17 +175,10 @@ export default function Home() {
                 )}
               </div>
             )}
-            {!member && self?.profile?.status !== "pending" && <p className="fine">Guest invitations continue to work. <LoadingLink href="/register">Create a profile</LoadingLink> to keep your history and host events.</p>}
+            {self?.profile?.status !== "pending" && <p className="fine">Guest invitations continue to work. <LoadingLink href="/register">Create a profile</LoadingLink> to keep your history and host events.</p>}
             <button
               className="text-button"
-              onClick={() =>
-                act(async () => {
-                  await browser().auth.signOut();
-                  setUser("");
-                  setSelf(null);
-                  setEvents([]);
-                })
-              }
+              onClick={signOut}
             >
               Sign out
             </button>
