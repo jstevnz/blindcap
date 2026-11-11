@@ -86,7 +86,18 @@ function ParticipantSlot({
       (saved && "accountId" in saved
         ? String(saved.accountId ?? "")
         : undefined);
+  const otherProfileIds = new Set(
+    e.participants.flatMap((participant) =>
+      participant.id !== saved?.id &&
+      "accountId" in participant &&
+      participant.accountId
+        ? [participant.accountId]
+        : [],
+    ),
+  );
+  const alreadyAdded = !manual && !!accountId && otherProfileIds.has(accountId);
   async function choose(id: string) {
+    if (otherProfileIds.has(id)) return;
     try {
       const d = await request(`/api/events/${e.id}/enrollment`, {
         operation: "profile",
@@ -128,10 +139,12 @@ function ParticipantSlot({
               type="button"
               className="secondary search-result"
               key={p.id}
+              disabled={busy || otherProfileIds.has(p.id)}
               onClick={() => choose(p.id)}
             >
               {[p.firstName, p.lastName].filter(Boolean).join(" ") ||
                 p.displayName}
+              {otherProfileIds.has(p.id) && " · Already added"}
             </button>
           ))}
           <button
@@ -155,6 +168,7 @@ function ParticipantSlot({
         <form
           onSubmit={(ev) => {
             ev.preventDefault();
+            if (busy || alreadyAdded) return;
             send({
               type: "roster-seat",
               slot,
@@ -196,7 +210,8 @@ function ParticipantSlot({
               onChange={(ev) => setEmail(ev.target.value)}
             />
           </label>
-          {canEdit && <button disabled={busy}>Save participant</button>}
+          {alreadyAdded && <p>This profile is already in another slot. Choose a different participant.</p>}
+          {canEdit && <button disabled={busy || alreadyAdded}>Save participant</button>}
         </form>
       )}
       {error && (

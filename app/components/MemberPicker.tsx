@@ -11,11 +11,13 @@ type Member = {
 };
 export default function MemberPicker({
   selected,
+  unavailableIds = [],
   onSelect,
   onClear,
   clearLabel = "Use a guest seat instead",
   hint = "Choose a profile, or enter a guest’s details below.",
 }: {
+  unavailableIds?: readonly string[];
   selected?: { id: string; name: string };
   onSelect: (p: Member) => void;
   onClear: () => void;
@@ -77,6 +79,7 @@ export default function MemberPicker({
               type="button"
               className="secondary search-result"
               key={p.id}
+              disabled={unavailableIds.includes(p.id)}
               onClick={() => {
                 onSelect(p);
                 setQuery("");
@@ -85,6 +88,7 @@ export default function MemberPicker({
             >
               <Avatar name={p.displayName} url={p.avatarUrl} />
               {p.displayName} <small>@{p.username}</small>
+              {unavailableIds.includes(p.id) && " · Already added"}
             </button>
           ))}
           <small>{hint}</small>

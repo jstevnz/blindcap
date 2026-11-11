@@ -227,3 +227,19 @@ test("semifinals and finals get fresh alias maps and every eligible bottle appea
     if (stage !== "final") e = applyCommand(e, host, { type: "advance" });
   }
 });
+
+test("a saved profile cannot occupy another slot even with a different email", () => {
+  const event = setup();
+  const participant = event.participants[0];
+  assert.throws(
+    () => applyCommand(event, host, {
+      type: "roster-seat",
+      slot: 1,
+      firstName: participant.firstName,
+      lastName: participant.lastName,
+      email: "different@example.com",
+      accountId: participant.accountId,
+    }),
+    /already has a seat/,
+  );
+});

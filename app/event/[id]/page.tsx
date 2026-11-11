@@ -376,24 +376,25 @@ export default function EventPage({
                       <fieldset key={i}>
                         <legend>BOTTLE {String(i + 1).padStart(2, "0")}</legend>
                         <MemberPicker
+                          unavailableIds={rows.flatMap((row, index) =>
+                            index !== i && row.accountId ? [row.accountId] : [],
+                          )}
                           selected={
                             r.accountId
                               ? { id: r.accountId, name: r.name }
                               : undefined
                           }
                           onSelect={(p) =>
-                            setRows((current) =>
-                              current.map((x, j) =>
-                                j === i
-                                  ? {
-                                      ...x,
-                                      name: p.displayName,
-                                      email: "",
-                                      accountId: p.id,
-                                    }
-                                  : x,
-                              ),
-                            )
+                            setRows((current) => {
+                              if (current.some((row, index) => index !== i && row.accountId === p.id)) {
+                                return current;
+                              }
+                              return current.map((row, index) =>
+                                index === i
+                                  ? { ...row, name: p.displayName, email: "", accountId: p.id }
+                                  : row,
+                              );
+                            })
                           }
                           onClear={() =>
                             setRows((current) =>
