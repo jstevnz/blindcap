@@ -1,4 +1,5 @@
 import {linkReserved,notifyEnrollmentForUser} from "./enrollment.ts";
+import { seriesLogoUrl } from "./series-logos.ts";
 import { avatarUrl } from "./photos.ts";
 import { deletePendingApplication } from "./pending-deletion.ts";
 import { applyForMembership, notifyOwner } from "./applications.ts";
@@ -377,35 +378,37 @@ export async function communityAction(
   }
   if (op === "invitations") {
     await linkReserved(db,a.id);
-    if(req.headers.get("x-blindcap-email-key"))await notifyEnrollmentForUser(db,a.id,services.deliver);
+    if (input.notify !== false && req.headers.get("x-blindcap-email-key")) {
+      await notifyEnrollmentForUser(db, a.id, services.deliver);
+    }
     const { data, error } = await db
       .from("bourbon_member_invites")
-      .select("event_id,participant_id,status,invited_by")
+      .select("event_id,participant_id,status,invited_by,created_at")
       .eq("invitee_id", a.id)
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .order("event_id", { ascending: true });
     if (error) throw new Error("Unable to load invitations.");
-    const list = [];
-    for (const invite of data ?? []) {
-      const [{ data: event }, { data: host }] = await Promise.all([
-        db
-          .from("bourbon_events")
-          .select("state")
-          .eq("id", invite.event_id)
-          .maybeSingle(),
-        db
-          .from("bourbon_profiles")
-          .select("display_name")
-          .eq("id", invite.invited_by)
-          .maybeSingle(),
+    const list = await Promise.all((data ?? []).map(async (invite) => {
+      const [{ data: event }, { data: host }, { data: edition }] = await Promise.all([
+        db.from("bourbon_events").select("state").eq("id", invite.event_id).maybeSingle(),
+        db.from("bourbon_profiles").select("display_name").eq("id", invite.invited_by).maybeSingle(),
+        input.includeLogo === true
+          ? db.from("bourbon_editions").select("series_id").eq("event_id", invite.event_id).maybeSingle()
+          : { data: null },
       ]);
-      if (event)
-        list.push({
-          ...invite,
-          title: event.state.title,
-          host: host?.display_name ?? "Your host",
-        });
-    }
-    return { invitations: list };
+      if (!event) return null;
+      const series = edition
+        ? (await db.from("bourbon_series").select("logo_path").eq("id", edition.series_id).maybeSingle()).data
+        : null;
+      return {
+        ...invite,
+        title: event.state.title,
+        host: host?.display_name ?? "Your host",
+        logoUrl: await seriesLogoUrl(db, series?.logo_path),
+      };
+    }));
+    return { invitations: list.filter((invite) => invite !== null) };
   }
   if (op === "accept") {
     const { data, error } = await db.rpc("bourbon_accept_member_invite", {

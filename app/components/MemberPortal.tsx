@@ -21,6 +21,23 @@ type Recap = {
   bottle: { name: string; result: { place: number; score: number } | null } | null;
 };
 
+type Invitation = {
+  event_id: string;
+  participant_id: string;
+  title: string;
+  host: string;
+  logoUrl?: string | null;
+};
+
+type Award = {
+  seriesId: string;
+  title: string;
+  winnerAward: string;
+  swillAward: string;
+  wins: number;
+  swills: number;
+};
+
 export default function MemberPortal({
   profile,
   signingOut,
@@ -35,17 +52,27 @@ export default function MemberPortal({
   const [events, setEvents] = useState<EventSummary[] | null>(null);
   const [recaps, setRecaps] = useState<Recap[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [invitations, setInvitations] = useState<Invitation[] | null>(null);
+  const [awards, setAwards] = useState<Award[] | null>(null);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState("");
 
   useEffect(() => {
     let active = true;
     Promise.allSettled([
       request("/api/events/catalog"),
       request("/api/history"),
-    ]).then(([catalog, history]) => {
+      request("/api/community", { operation: "invitations", includeLogo: true, notify: false }),
+      request("/api/series", { operation: "achievements" }),
+    ]).then(([catalog, history, invited, achievements]) => {
       if (!active) return;
       if (catalog.status === "fulfilled") setEvents(catalog.value.events);
       if (history.status === "fulfilled") {
         setRecaps(history.value.events.filter((event: Recap) => event.participating));
+      }
+      if (invited.status === "fulfilled") setInvitations(invited.value.invitations);
+      if (achievements.status === "fulfilled") {
+        setAwards(achievements.value.achievements.filter((award: Award) => award.wins > 0 || award.swills > 0));
       }
       setLoading(false);
     });
@@ -59,8 +86,10 @@ export default function MemberPortal({
   );
   const hosted = events?.filter((event) => event.hostedByMe);
   const activeEvents = events?.filter((event) => event.canOpen && (event.hostedByMe || event.managing || event.participating) && event.phase !== "complete");
-  const featured = activeEvents?.find((event) => event.phase !== "setup") ?? activeEvents?.[0];
-  const otherEvents = activeEvents?.filter((event) => event.id !== featured?.id).slice(0, 3) ?? [];
+  const participating = activeEvents?.filter((event) => event.participating);
+  const featured = participating?.find((event) => event.phase !== "setup") ?? participating?.[0];
+  const invitation = invitations?.[0];
+  const otherEvents = activeEvents?.filter((event) => invitation || event.id !== featured?.id).slice(0, 3) ?? [];
   const placements = recaps?.flatMap((event) => event.bottle?.result ? [event.bottle.result.place] : []);
   const averagePlace = placements?.length
     ? (placements.reduce((total, place) => total + place, 0) / placements.length).toFixed(1)
@@ -68,7 +97,24 @@ export default function MemberPortal({
   const firstName = profile.displayName.trim().split(/\s+/)[0] || "taster";
   const formattedDate = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
   const owner = profile.role === "owner";
-  const hasDataError = !loading && (events === null || recaps === null);
+  const hasDataError = !loading && (events === null || recaps === null || invitations === null || awards === null);
+
+  async function joinEvent(invite: Invitation) {
+    if (joining) return;
+    setJoining(true);
+    setJoinError("");
+    try {
+      await request("/api/community", {
+        operation: "accept",
+        eventId: invite.event_id,
+        participantId: invite.participant_id,
+      });
+      location.assign(`/event/${invite.event_id}`);
+    } catch (error) {
+      setJoinError((error as Error).message);
+      setJoining(false);
+    }
+  }
 
   return (
     <div className="member-portal">
@@ -83,7 +129,6 @@ export default function MemberPortal({
           {owner && <LoadingLink href="/members">Signup reviews</LoadingLink>}
         </nav>
         <div className="portal-header-actions">
-          <a className="button portal-pill" href="/events?create=1">Host a tasting <span aria-hidden="true">→</span></a>
           <LoadingLink className="portal-profile-link" href="/account" aria-label="My profile">
             <Avatar name={profile.displayName} url={profile.avatarUrl} />
           </LoadingLink>
@@ -98,7 +143,7 @@ export default function MemberPortal({
             <p>Find your events, pick up where you left off, and revisit your reveals.</p>
           </div>
           <dl className="portal-stats">
-            <div><dt>Events hosted</dt><dd>{hosted?.length ?? "—"}</dd></div>
+            <div><dt>Invitations</dt><dd>{invitations?.length ?? "—"}</dd></div>
             <div><dt>Revealed tastings</dt><dd>{recaps?.length ?? "—"}</dd></div>
             <div><dt>Avg. bottle place</dt><dd>{averagePlace}</dd></div>
           </dl>
@@ -108,32 +153,53 @@ export default function MemberPortal({
         {hasDataError && <p className="notice" role="status">Some dashboard details couldn’t load. <LoadingLink href="/events">Open Events →</LoadingLink></p>}
         {error && <p className="error" role="alert">{error}</p>}
 
-        <div className="portal-grid">
+        {!loading && <div className="portal-grid">
           <section className="portal-card portal-feature">
-            <p className="eyebrow">{featured?.phase === "setup" ? "Event setup" : featured ? "Tasting in progress" : "Your events"}</p>
-            <h2>{featured ? featured.title : events?.length === 0 ? "Host your first tasting." : "Gather your tasting group."}</h2>
-            <p>{featured
-              ? featured.phase === "setup"
-                ? featured.managing
-                  ? "Continue setting up your roster, invitations, and bottles."
-                  : "Open your event to see the tasting details and add your bottle."
-                : "Return to the tasting room to pick up where you left off."
-              : "Set up a blind tasting, invite your group, and reveal the results together."}</p>
-            {featured
-              ? <LoadingLink className="button portal-pill" href={`/event/${featured.id}`}>Open event <span aria-hidden="true">→</span></LoadingLink>
-              : <a className="button portal-pill" href="/events?create=1">Host a tasting <span aria-hidden="true">→</span></a>}
+            {invitation ? (
+              <div className="portal-invite">
+                <div>
+                  <p className="eyebrow">Your newest invitation</p>
+                  <h2>{invitation.title}</h2>
+                  <p>Hosted by {invitation.host}</p>
+                  <button className="portal-pill" type="button" disabled={joining} onClick={() => joinEvent(invitation)}>
+                    {joining ? "Joining…" : "Join event"} <span aria-hidden="true">→</span>
+                  </button>
+                  {joinError && <p role="alert">{joinError}</p>}
+                  {invitations && invitations.length > 1 && <p className="portal-more-invites"><LoadingLink href="/events">View all {invitations.length} invitations →</LoadingLink></p>}
+                </div>
+                {invitation.logoUrl && <img className="portal-invite-logo" src={invitation.logoUrl} alt={`${invitation.title} logo`} />}
+              </div>
+            ) : (
+              <>
+                <p className="eyebrow">{featured ? "Your tasting" : "Your invitations"}</p>
+                <h2>{featured?.title ?? "Your next invitation belongs here."}</h2>
+                <p>{featured
+                  ? featured.phase === "setup" ? "Open the event to add your bottle and get ready." : "Return to the tasting room to pick up where you left off."
+                  : invitations ? "When a host invites you to a tasting, you can join from this dashboard." : "Open Events to check your invitations."}</p>
+                <LoadingLink className="button portal-pill" href={featured ? `/event/${featured.id}` : "/events"}>
+                  {featured ? "Open event" : "Browse events"} <span aria-hidden="true">→</span>
+                </LoadingLink>
+              </>
+            )}
           </section>
 
-          <section className="portal-card portal-profile">
-            <div className="portal-profile-heading">
-              <Avatar name={profile.displayName} url={profile.avatarUrl} />
-              <div>
-                <p className="eyebrow">Your account</p>
-                <h2>{profile.displayName}</h2>
-              </div>
+          <section className="portal-card">
+            <div className="portal-card-heading">
+              <h2>Taste profile</h2>
+              <LoadingLink href="/events/history">Full history →</LoadingLink>
             </div>
-            <p>Manage your photo, contact details, and password.</p>
-            <LoadingLink href="/account">My profile & password →</LoadingLink>
+            <p>Your submitted bourbons, placements, and awards.</p>
+            {awards?.length ? (
+              <ul className="portal-list">
+                {awards.slice(0, 3).map((award) => (
+                  <li key={award.seriesId}>
+                    <a href={`/events?series=${award.seriesId}`}>{award.title}</a>
+                    {award.wins > 0 && <small>{award.winnerAward} · {award.wins}</small>}
+                    {award.swills > 0 && <small>{award.swillAward} · {award.swills}</small>}
+                  </li>
+                ))}
+              </ul>
+            ) : <p>{awards ? "Your awards will appear here after a reveal or when a historical result is linked to your profile." : "Open History & awards to see your awards."}</p>}
           </section>
 
           <section className="portal-card">
@@ -146,7 +212,7 @@ export default function MemberPortal({
                 {recentRecaps.slice(0, 3).map((event) => (
                   <li key={event.id}>
                     <LoadingLink href={`/event/${event.id}`}>{event.title}</LoadingLink>
-                    {event.bottle && <small>{event.bottle.name}{event.bottle.result && ` · Place ${event.bottle.result.place}`}</small>}
+                    {event.bottle && <small>{event.bottle.name}{event.bottle.result && ` · Place ${event.bottle.result.place} · ${event.bottle.result.score.toFixed(1)} pts`}</small>}
                   </li>
                 ))}
               </ul>
@@ -169,19 +235,23 @@ export default function MemberPortal({
               </ul>
             ) : <p>Open Events to check invitations, manage tastings, and browse event series.</p>}
           </section>
-        </div>
-
-        {hosted?.length === 0 && (
-          <section className="portal-card portal-guide">
-            <h2>Plan your first blind tasting</h2>
-            <ol>
-              <li><strong>Create an event.</strong> Choose a name and the number of tasters.</li>
-              <li><strong>Invite your group.</strong> Ask guests to join and enter their bottles.</li>
-              <li><strong>Run the flight.</strong> Serve the numbered pours, collect ballots, then reveal the results.</li>
-            </ol>
-            <a href="/events?create=1">Create your first event →</a>
+          <section className="portal-card portal-host">
+            <h2>Host a tasting</h2>
+            <p>{hosted?.length ? `${hosted.length} hosted ${hosted.length === 1 ? "event" : "events"}. ` : ""}Create an event, invite your group, and run a blind tasting.</p>
+            <a className="button portal-pill secondary" href="/events?create=1">Create an event <span aria-hidden="true">→</span></a>
           </section>
-        )}
+
+          <section className="portal-card portal-profile">
+            <div className="portal-profile-heading">
+              <Avatar name={profile.displayName} url={profile.avatarUrl} />
+              <div>
+                <p className="eyebrow">Your account</p>
+                <h2>{profile.displayName}</h2>
+              </div>
+            </div>
+            <LoadingLink href="/account">My profile & password →</LoadingLink>
+          </section>
+        </div>}
       </main>
 
       <footer className="portal-footer">

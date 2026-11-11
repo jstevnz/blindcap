@@ -55,6 +55,7 @@ function fixture() {
   let deletionFails = false;
   class Query implements PromiseLike<{ data: Row[]; error: null }> {
     filters: ((r: Row) => boolean)[] = [];
+    ordering: { key: string; ascending: boolean }[] = [];
     mutation: Row | null = null;
     kind = "read";
     constructor(readonly table: string) {}
@@ -73,7 +74,8 @@ function fixture() {
       this.filters.push((r) => String(r[k]) > String(v));
       return this;
     }
-    order() {
+    order(key: string, options: { ascending: boolean }) {
+      this.ordering.push({ key, ascending: options.ascending });
       return this;
     }
     limit() {
@@ -134,6 +136,15 @@ function fixture() {
           rows.forEach((r) => Object.assign(r, this.mutation));
         }
       } else rows = rows.filter((r) => this.filters.every((f) => f(r)));
+      if (this.ordering.length) {
+        rows = [...rows].sort((a, b) => {
+          for (const { key, ascending } of this.ordering) {
+            const difference = String(a[key]).localeCompare(String(b[key]));
+            if (difference) return ascending ? difference : -difference;
+          }
+          return 0;
+        });
+      }
       return { data: rows, error: null };
     }
     async maybeSingle() {
@@ -163,6 +174,14 @@ function fixture() {
         if (p) p.status = "active";
       }
       return { data: !limited, error: null };
+    },
+    storage: {
+      from: (bucket: string) => ({
+        createSignedUrl: async (path: string) => ({
+          data: { signedUrl: `https://storage.example/${bucket}/${path}?token=fixture` },
+          error: null,
+        }),
+      }),
     },
     auth: {
       getUser: async () => ({
@@ -809,4 +828,26 @@ test("pending cleanup refuses approved or event-linked accounts without calling 
     );
     assert.equal(p.status, linked ? "pending" : "active");
   }
+});
+
+
+test("portal invitations show newest pending seats first and include the event's series logo", async () => {
+  const f = fixture();
+  f.tables.bourbon_member_invites.push(
+    { event_id: "old", participant_id: "seat-1", invitee_id: member.id, status: "pending", invited_by: owner.id, created_at: "2026-11-10" },
+    { event_id: "new", participant_id: "seat-2", invitee_id: member.id, status: "pending", invited_by: owner.id, created_at: "2026-11-11" },
+    { event_id: "other", participant_id: "seat-3", invitee_id: owner.id, status: "pending", invited_by: member.id, created_at: "2026-11-12" },
+    { event_id: "accepted", participant_id: "seat-4", invitee_id: member.id, status: "accepted", invited_by: owner.id, created_at: "2026-11-12" },
+  );
+  f.tables.bourbon_events = ["old", "new", "other", "accepted"].map(id => ({ id, state: { title: id } }));
+  f.tables.bourbon_editions = [{ event_id: "new", series_id: "series" }];
+  f.tables.bourbon_series = [{ id: "series", logo_path: "series/logo.png" }];
+  const result = await communityAction(
+    { operation: "invitations", includeLogo: true, notify: false },
+    f.db, member, req(),
+  ) as { invitations: { event_id: string; logoUrl: string | null }[] };
+  assert.deepEqual(result.invitations.map(invite => invite.event_id), ["new", "old"]);
+  assert.match(result.invitations[0].logoUrl ?? "", /blindcap-series-logos\/series\/logo\.png/);
+  assert.equal(result.invitations[1].logoUrl, null);
+  assert.equal(f.calls.filter(call => call.name === "link_bourbon_reserved_participants").length, 1);
 });

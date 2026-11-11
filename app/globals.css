@@ -1431,3 +1431,37 @@ body:has(.member-portal) > footer {
     width: 100%;
   }
 }
+
+.portal-invite {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px 24px;
+}
+.portal-invite > div {
+  flex: 1 1 225px;
+  min-width: 0;
+}
+.portal-invite-logo {
+  display: block;
+  width: min(30%, 150px);
+  min-width: 96px;
+  max-height: 130px;
+  object-fit: contain;
+  background: var(--white);
+  padding: 8px;
+  border-radius: 12px;
+}
+.member-portal .portal-invite button.portal-pill {
+  border-radius: 999px;
+  min-height: 44px;
+  padding: 9px 18px;
+  gap: 12px;
+  background: #f1c47e;
+  border-color: #f1c47e;
+  color: #20392f;
+}
+.portal-more-invites {
+  margin: 14px 0 0;
+}
