@@ -14,11 +14,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header className="masthead">
           <a href="/" aria-label="Blindcap home">
             <Image
-              src="/brand/blindcap-logo-v1.png"
+              src="/brand/blindcap-wordmark.png"
               alt="Blindcap"
-              width={1635}
-              height={962}
-              sizes="(max-width: 600px) 200px, 240px"
+              width={660}
+              height={120}
+              sizes="(max-width: 600px) 180px, 220px"
               className="brand-logo"
               preload
             />

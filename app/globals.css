@@ -65,7 +65,7 @@ select:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 40px;
+  padding: 16px 40px;
 }
 .masthead a {
   display: flex;
@@ -78,13 +78,13 @@ select:focus-visible {
 }
 .masthead .brand-logo {
   display: block;
-  width: 240px;
+  width: 220px;
   max-width: 100%;
   height: auto;
 }
 @media (max-width: 600px) {
   .masthead .brand-logo {
-    width: 200px;
+    width: 180px;
   }
 }
 main {
@@ -547,7 +547,7 @@ summary {
 }
 @media (max-width: 800px) {
   .masthead {
-    padding: 18px 24px;
+    padding: 12px 24px;
   }
   .header-note {
     display: none;
@@ -813,7 +813,7 @@ textarea {
 .event-main .bottle-card { min-inline-size: 0; }
 @media (max-width: 600px) {
   body:has(.event-main) .masthead { padding: 12px 16px; }
-  body:has(.event-main) .masthead .brand-logo { width: 112px; }
+  body:has(.event-main) .masthead .brand-logo { width: 144px; }
   .event-main { padding: 20px 16px 32px; }
   .event-heading > div { display: flow-root; }
   .event-heading .eyebrow { margin-bottom: 6px; }
