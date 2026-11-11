@@ -1,4 +1,5 @@
 "use client";
+import { PublicTasting, SampleScorecard } from "./components/PublicTasting";
 import { useEffect, useState } from "react";
 import { browser, configured, request } from "@/lib/browser";
 type Self = {
@@ -54,7 +55,8 @@ export default function Home() {
   }
   const member = self?.profile?.status === "active";
   return (
-    <main>
+    <main className={user ? undefined : "public-home"}>
+      <div className={user ? undefined : "public-hero"}>
       <section className={user ? "dashboard-heading" : "hero"}>
         <h1>
           {user ? (
@@ -82,13 +84,42 @@ export default function Home() {
             the reveal crowns a winner.
           </p>
         )}
+        {!user && <div className="public-hero-actions">
+          <a className="button" href="/register">Create a profile</a>
+          <a href="#play-a-round">See how a round works ↓</a>
+        </div>}
         {!user && <div className="hero-rule">
           <span>BUILD YOUR EVENT</span>
           <span>COMPARE BLIND</span>
           <span>REVEAL THE WINNER</span>
         </div>}
       </section>
-      <section className="panel welcome">
+      {!user && <SampleScorecard />}
+      </div>
+      {!user && <section className="how" id="how-it-works" aria-label="How BlindCap works">
+        <div>
+          <span>01 / CREATE</span>
+          <h3>Build your own event.</h3>
+          <p>
+            Name your event, invite your group and keep the entries anonymous.
+          </p>
+        </div>
+        <div>
+          <span>02 / COMPARE</span>
+          <h3>Make your own call.</h3>
+          <p>Score and rank each entry before its identity is revealed.</p>
+        </div>
+        <div>
+          <span>03 / REVEAL</span>
+          <h3>Celebrate the winner.</h3>
+          <p>
+            Reveal the results, compare your favorites and revisit your own
+            rankings.
+          </p>
+        </div>
+      </section>}
+      {!user && <PublicTasting />}
+      <section className="panel welcome" id="sign-in">
         <p className="eyebrow">YOUR SEAT AT THE TABLE</p>
         <h2>
           {member
@@ -279,28 +310,6 @@ export default function Home() {
           </p>
         )}
       </section>
-      {!user && <section className="how">
-        <div>
-          <span>01 / CREATE</span>
-          <h3>Build your own event.</h3>
-          <p>
-            Name your event, invite your group and keep the entries anonymous.
-          </p>
-        </div>
-        <div>
-          <span>02 / COMPARE</span>
-          <h3>Make your own call.</h3>
-          <p>Score and rank each entry before its identity is revealed.</p>
-        </div>
-        <div>
-          <span>03 / REVEAL</span>
-          <h3>Celebrate the winner.</h3>
-          <p>
-            Reveal the results, compare your favorites and revisit your own
-            rankings.
-          </p>
-        </div>
-      </section>}
     </main>
   );
 }

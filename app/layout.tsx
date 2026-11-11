@@ -23,9 +23,27 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               preload
             />
           </a>
+          <nav className="public-header-nav" aria-label="Explore BlindCap">
+            <a href="/#how-it-works">How it works</a>
+            <a href="/#play-a-round">Play a round</a>
+            <a href="/#questions">Questions</a>
+            <a href="/#sign-in">Sign in</a>
+          </nav>
         </header>
         {children}
-        <footer>BLINDCAP</footer>
+        <footer>
+          BLINDCAP
+          <div className="public-footer-content">
+            <p>Host blind tastings. Compare your picks. Share the reveal.</p>
+            <nav aria-label="BlindCap footer">
+              <a href="/#how-it-works">How it works</a>
+              <a href="/#play-a-round">Round walkthrough</a>
+              <a href="/#questions">Questions</a>
+              <a href="/#sign-in">Sign in</a>
+              <a href="/register">Create a profile</a>
+            </nav>
+          </div>
+        </footer>
       </body>
     </html>
   );
