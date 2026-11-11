@@ -934,23 +934,73 @@ body:has(.public-home) .public-footer-content {
 .sample-scorecard h2 {
   margin-bottom: 8px;
 }
-.sample-scorecard table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 20px 0 12px;
+.sample-results {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 12px;
 }
-.sample-scorecard th,
-.sample-scorecard td {
-  text-align: left;
-  padding: 10px 8px;
+.sample-result {
+  padding: 12px 10px;
   border-bottom: 1px solid var(--line);
 }
-.sample-scorecard th {
-  font-size: 12px;
-}
-.sample-scorecard tbody tr:first-child {
+.sample-result:first-child {
   background: #e9ede1;
+  border: 1px solid #d8e0ce;
+  border-radius: 5px;
+}
+.sample-result-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.sample-result-heading h3 {
+  font-size: clamp(18px, 2vw, 23px);
+  margin: 2px 0 4px;
+}
+.sample-place {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.sample-total {
+  margin: 0;
+  flex-shrink: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sample-total strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1.2;
+}
+.sample-total span,
+.sample-ratings dt,
+.sample-ratings dd span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.sample-ratings {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px 8px;
+  margin: 8px 0 0;
+}
+.sample-ratings dt {
+  line-height: 1.3;
+}
+.sample-ratings dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+@media (max-width: 360px) {
+  .sample-ratings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .scorecard-note {
   margin: 0;

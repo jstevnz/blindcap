@@ -1,22 +1,44 @@
 import Image from "next/image";
 
+const sampleResults = [
+  { bottle: "Maple Ridge Reserve", cup: "02", rank: "1.33", score: "83.89", ratings: [9, 9, 8, 9] },
+  { bottle: "Stillwater Small Batch", cup: "01", rank: "1.67", score: "69.44", ratings: [8, 8, 9, 8] },
+  { bottle: "Red Oak Single Barrel", cup: "03", rank: "3.00", score: "13.89", ratings: [9, 7, 6, 7] },
+];
+
+const tastingCriteria = ["Aroma", "Flavor", "Smoothness", "Overall enjoyment"];
+
 export function SampleScorecard() {
   return (
     <aside className="sample-scorecard" aria-label="Sample final results">
       <p className="eyebrow">Sample reveal</p>
       <h2>Friday bourbon flight</h2>
       <p className="scorecard-note">Three tasters · Three pours · One final</p>
-      <table>
-        <thead>
-          <tr><th scope="col">Place</th><th scope="col">Bottle</th><th scope="col">Cup</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>1</td><td>Maple Ridge Reserve</td><td>02</td></tr>
-          <tr><td>2</td><td>Stillwater Small Batch</td><td>01</td></tr>
-          <tr><td>3</td><td>Red Oak Single Barrel</td><td>03</td></tr>
-        </tbody>
-      </table>
-      <p className="scorecard-note">Example bottles and results</p>
+      <ol className="sample-results">
+        {sampleResults.map(({ bottle, cup, rank, score, ratings }, index) => (
+          <li key={cup} className="sample-result">
+            <div className="sample-result-heading">
+              <div>
+                <p className="sample-place">{index === 0 ? "1st · Winner" : index === 1 ? "2nd place" : "3rd place"}</p>
+                <h3>{bottle}</h3>
+                <p className="scorecard-note">Cup {cup} · Avg. rank {rank}</p>
+              </div>
+              <p className="sample-total"><strong>{score}</strong><span>out of 100</span></p>
+            </div>
+            <dl className="sample-ratings">
+              {tastingCriteria.map((criterion, ratingIndex) => (
+                <div key={criterion}>
+                  <dt>{criterion}</dt>
+                  <dd>{ratings[ratingIndex]}<span>/10</span></dd>
+                </div>
+              ))}
+            </dl>
+          </li>
+        ))}
+      </ol>
+      <p className="scorecard-note">
+        Example results. Ratings are taster averages. Preference rank counts for 80% of the score, and each tasting criterion counts for 5%.
+      </p>
     </aside>
   );
 }
