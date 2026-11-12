@@ -1,9 +1,9 @@
 import Image from "next/image";
 
 const sampleResults = [
-  { bottle: "Maple Ridge Reserve", cup: "02", rank: "1.33", score: "83.89", ratings: [9, 9, 8, 9] },
-  { bottle: "Stillwater Small Batch", cup: "01", rank: "1.67", score: "69.44", ratings: [8, 8, 9, 8] },
-  { bottle: "Red Oak Single Barrel", cup: "03", rank: "3.00", score: "13.89", ratings: [9, 7, 6, 7] },
+  { bottle: "Maple Ridge Reserve", pour: "2", rank: "1.33", score: "83.89", ratings: [9, 9, 8, 9] },
+  { bottle: "Stillwater Small Batch", pour: "1", rank: "1.67", score: "69.44", ratings: [8, 8, 9, 8] },
+  { bottle: "Red Oak Single Barrel", pour: "3", rank: "3.00", score: "13.89", ratings: [9, 7, 6, 7] },
 ];
 
 const tastingCriteria = ["Aroma", "Flavor", "Smoothness", "Overall enjoyment"];
@@ -15,13 +15,13 @@ export function SampleScorecard() {
       <h2>Friday bourbon flight</h2>
       <p className="scorecard-note">Three tasters · Three pours · One final</p>
       <ol className="sample-results">
-        {sampleResults.map(({ bottle, cup, rank, score, ratings }, index) => (
-          <li key={cup} className="sample-result">
+        {sampleResults.map(({ bottle, pour, rank, score, ratings }, index) => (
+          <li key={pour} className="sample-result">
             <div className="sample-result-heading">
               <div>
                 <p className="sample-place">{index === 0 ? "1st · Winner" : index === 1 ? "2nd place" : "3rd place"}</p>
                 <h3>{bottle}</h3>
-                <p className="scorecard-note">Cup {cup} · Avg. rank {rank}</p>
+                <p className="scorecard-note">Pour {pour} · Avg. rank {rank}</p>
               </div>
               <p className="sample-total"><strong>{score}</strong><span>out of 100</span></p>
             </div>
@@ -51,10 +51,10 @@ export function PublicTasting() {
           <h2 id="round-heading">How a round is played</h2>
           <p>Here’s what a three-pour bourbon flight looks like from your seat.</p>
           <ol className="round-steps">
-            <li><h3>Taste the numbered pours.</h3><p>Your host opens the flight and serves the samples in numbered cups. Everyone tastes the same pours while the bottle names stay hidden.</p></li>
-            <li><h3>Score and rank on your phone.</h3><p>Rate aroma, flavor, smoothness and overall enjoyment from 1 to 10. Then give each pour a unique preference rank. For example, Cup 02 might be your favorite, Cup 01 second and Cup 03 third.</p></li>
+            <li><h3>Taste the numbered pours.</h3><p>Your host opens the flight and serves the numbered pours. Everyone tastes the same pours while the bottle names stay hidden.</p></li>
+            <li><h3>Score and rank on your phone.</h3><p>Rate aroma, flavor, smoothness and overall enjoyment from 1 to 10. Then give each pour a unique preference rank. For example, Pour 2 might be your favorite, Pour 1 second and Pour 3 third.</p></li>
             <li><h3>Submit your ballot.</h3><p>You can revise it until the host closes the flight. Preference is 80% of the bourbon round score. Each of the four tasting ratings contributes 5%.</p></li>
-            <li><h3>Compare notes between flights.</h3><p>After closing a flight, the host can share the winning cup, cup scores, and each taster’s ranks and scores. Bottle names and owners stay hidden.</p></li>
+            <li><h3>Compare notes between flights.</h3><p>After closing a flight, the host can share the winning pour, pour scores, and each taster’s ranks and scores. Bottle names and owners stay hidden.</p></li>
             <li><h3>See what you picked.</h3><p>In a tournament, the top pours advance. When the event ends and the host reveals the results, each flight recap adds the bottle names and owners alongside the final standings and awards.</p></li>
           </ol>
         </div>
