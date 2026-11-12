@@ -7,6 +7,7 @@ import ParticipantEnrollment from "@/app/components/ParticipantEnrollment";
 import EventWelcome from "@/app/components/EventWelcome";
 import PhysicalMailingList from "@/app/components/PhysicalMailingList";
 import EventTeam from "@/app/components/EventTeam";
+import FlightRecap from "@/app/components/FlightRecap";
 import Awards from "@/app/components/Awards";
 import { request } from "@/lib/browser";
 type Row = {
@@ -123,6 +124,12 @@ export default function EventPage({
       ? b.name
       : `Bottle ${String(b?.number ?? "?").padStart(2, "0")}`;
   };
+  const openFlightId = e?.groups.find((flight) => flight.status === "open")?.id;
+  const isTaster = !!e?.participantId && !e.admin;
+  useEffect(() => {
+    if (openFlightId && isTaster) setTab("taste");
+  }, [openFlightId, isTaster]);
+
   if (!e)
     return (
       <main className="narrow">
@@ -137,6 +144,8 @@ export default function EventPage({
         )}
       </main>
     );
+  const recaps = e.groups.filter((flight) => flight.recap);
+  const latestRecap = [...recaps].sort((a, b) => (b.recap?.sharedAt ?? 0) - (a.recap?.sharedAt ?? 0))[0];
   if (e.workflowVersion === 2 && !e.admin && e.phase === "setup")
     return <EventWelcome id={id} />;
   const current = e.groups.find((g) => g.status === "open");
@@ -204,7 +213,7 @@ export default function EventPage({
               ? "Tasting room"
               : t === "host"
                 ? "Host controls"
-                : "The reveal"}
+                : !e.revealed && recaps.length ? "Flight recaps" : "The reveal"}
           </button>
         ))}
       </nav>
@@ -254,6 +263,12 @@ export default function EventPage({
               </>
             )}
           </section>
+          {!current && !e.revealed && latestRecap && (
+            <>
+              <FlightRecap flight={latestRecap} />
+              <button className="secondary" onClick={() => setTab("results")}>See all shared flight recaps</button>
+            </>
+          )}
           {current && e.participantId ? (
             <Ballot
               key={current.id}
@@ -505,8 +520,7 @@ export default function EventPage({
                 <p>
                   Participants refresh automatically. Close a group after all{" "}
                   {e.tasterCount}
-                  ballots arrive, then open the next. Scores below are visible
-                  only to you.
+                  ballots arrive. You can share a blind recap for discussion before opening the next flight.
                 </p>
                 <div className="actions">
                   {(e.phase === "opening" || e.phase === "semifinal") && (
@@ -605,6 +619,13 @@ export default function EventPage({
                     >
                       Close & lock ballots
                     </button>
+                  )}
+                  {g.status === "closed" && !e.revealed && (
+                    g.recap ? <p>Blind recap shared with tasters.</p> : (
+                      <button className="secondary" disabled={busy} onClick={() => setConfirm({ type: "share-flight", groupId: g.id })}>
+                        Share blind flight recap
+                      </button>
+                    )
                   )}
                   {g.scores && (
                     <div className="table-scroll">
@@ -1004,6 +1025,12 @@ export default function EventPage({
               </section>
             </>
           )}
+          {recaps.length > 0 && (
+            <section aria-labelledby="flight-recaps-heading">
+              <h2 id="flight-recaps-heading">{e.revealed ? "Round-by-round results" : "Shared blind flight recaps"}</h2>
+              {recaps.map((flight) => <FlightRecap key={flight.id} flight={flight} />)}
+            </section>
+          )}
         </>
       )}
       {confirm && (
@@ -1017,14 +1044,18 @@ export default function EventPage({
             <h2 id="confirm-title">
               {confirm.type === "start"
                 ? "Ready to make the draw?"
-                : confirm.type === "reveal"
+                : confirm.type === "share-flight"
+                  ? "Share this blind flight recap?"
+                  : confirm.type === "reveal"
                   ? "Time for the big reveal?"
                   : "Lock this flight’s ballots?"}
             </h2>
             <p>
               {confirm.type === "start"
                 ? "Taster count, participant emails, bottle ownership and the tournament draw will be locked. Check setup before continuing."
-                : confirm.type === "reveal"
+                : confirm.type === "share-flight"
+                  ? "Tasters will see cup scores and each person’s ranks and scores. Bottle names and owners stay hidden until the final reveal."
+                  : confirm.type === "reveal"
                   ? "Every taster will be able to see bottle identities, owners, standings and awards. This reveal is permanent."
                   : `All ${e.tasterCount} ballots are in. Closing prevents further edits to this flight.`}
             </p>

@@ -1465,3 +1465,8 @@ body:has(.member-portal) > footer {
 .portal-more-invites {
   margin: 14px 0 0;
 }
+
+.flight-recap-identity {
+  display: block;
+  font-weight: 400;
+}

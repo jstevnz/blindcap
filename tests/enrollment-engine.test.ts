@@ -243,3 +243,43 @@ test("a saved profile cannot occupy another slot even with a different email", (
     /already has a seat/,
   );
 });
+
+test("shared closed-flight recaps expose named rankings by cup and hide identities until the reveal", () => {
+  let event = bottles(applyCommand(setup(), host, { type: "invite-roster" }));
+  event = applyCommand(event, host, { type: "start" });
+  const groupId = event.groups[0].id;
+  const share = { type: "share-flight", groupId };
+  assert.throws(() => applyCommand(event, host, share), /Close the flight/);
+  event = applyCommand(event, host, { type: "open", groupId });
+  for (let taster = 0; taster < 3; taster++) {
+    const actor = participant(event, taster);
+    const flight = snapshot(event, actor).groups[0];
+    event = applyCommand(event, actor, {
+      type: "ballot",
+      groupId,
+      entries: flight.bottleIds.map((bottleId, index) => ({
+        bottleId, rank: taster === 0 ? 3 - index : index + 1,
+        aroma: 8, flavor: 8, smoothness: 8, enjoyment: 8,
+      })),
+    });
+  }
+  event = applyCommand(event, host, { type: "close", groupId });
+  const taster = participant(event, 0);
+  assert.equal(snapshot(event, taster).groups[0].recap, null);
+  assert.throws(() => applyCommand(event, taster, share), /host|admin/i);
+  event = applyCommand(event, host, share);
+  const recap = snapshot(event, taster).groups[0].recap!;
+  assert.equal(recap.rankings.length, 3);
+  assert.equal(recap.rankings[0].taster, event.participants[0].name);
+  assert.ok(recap.cups.some(cup => cup.first === 2 && cup.last === 1));
+  for (const bottle of event.bottles) {
+    assert.ok(!JSON.stringify(recap).includes(bottle.id));
+    assert.ok(!JSON.stringify(recap).includes(bottle.name));
+  }
+  assert.ok(recap.cups.every(cup => !("owner" in cup) && !("bottle" in cup)));
+  event = applyCommand(event, host, { type: "finish" });
+  event = applyCommand(event, host, { type: "reveal" });
+  const revealed = snapshot(event, taster).groups[0].recap!;
+  assert.ok(revealed.cups.every(cup => cup.bottle && cup.owner));
+  assert.deepEqual(revealed.rankings, recap.rankings);
+});

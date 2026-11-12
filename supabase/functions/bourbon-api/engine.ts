@@ -32,6 +32,7 @@ export type Entry = {
 };
 export type Ballot = { participantId: string; entries: Entry[] };
 export type Group = {
+  recapSharedAt?: number;
   cupNumbers?: Record<string,number>;
   publicIds?: Record<string,string>;
   id: string;
@@ -140,6 +141,13 @@ function group(stage: Stage, index: number, ids: string[]): Group {
     ballots: [],
   };
 }
+function entryScore(entry: Entry, count: number, runoff: boolean) {
+  const preference = (count - entry.rank) / (count - 1);
+  return runoff
+    ? 100 * preference
+    : 80 * preference +
+      (5 * (entry.aroma + entry.flavor + entry.smoothness + entry.enjoyment - 4)) / 9;
+}
 export function metrics(g: Group, id: string) {
   const n = g.bottleIds.length;
   assert(n >= 2, "A group needs two bottles.");
@@ -151,12 +159,7 @@ export function metrics(g: Group, id: string) {
     entries.reduce((s, x) => s + f(x), 0) / entries.length;
   return {
     bottleId: id,
-    score: mean((x) =>
-      g.runoffKey
-        ? (100 * (n - x.rank)) / (n - 1)
-        : (80 * (n - x.rank)) / (n - 1) +
-          (5 * (x.aroma + x.flavor + x.smoothness + x.enjoyment - 4)) / 9,
-    ),
+    score: mean((entry) => entryScore(entry, n, !!g.runoffKey)),
     preference: mean((x) => (100 * (n - x.rank)) / (n - 1)),
     enjoyment: mean((x) => (100 * (x.enjoyment - 1)) / 9),
   };
@@ -591,6 +594,12 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
         }
         break;
       }
+      case "share-flight": {
+        const flight = e.groups.find((group) => group.id === c.groupId);
+        assert(flight?.status === "closed" && flight.ballots.length, "Close the flight before sharing its recap.");
+        flight.recapSharedAt = e.revision + 1;
+        break;
+      }
       case "advance":
         advance(e);
         break;
@@ -611,6 +620,38 @@ export function applyCommand(original: Event, actor: Actor, c: Command): Event {
   e.revision++;
   return e;
 }
+function flightRecap(event: Event, flight: Group) {
+  if (flight.status !== "closed" || !flight.ballots.length || (!flight.recapSharedAt && !event.revealed)) return null;
+  const cupFor = (id: string) => flight.cupNumbers?.[id] ?? event.bottles.find((bottle) => bottle.id === id)!.number;
+  const standings = flight.bottleIds.map((id) => metrics(flight, id)).sort(compare);
+  const cups = standings.map((standing) => {
+    const { bottleId, score } = standing;
+    const cup = cupFor(bottleId);
+    const ranks = flight.ballots.flatMap((ballot) =>
+      ballot.entries.filter((entry) => entry.bottleId === bottleId).map((entry) => entry.rank),
+    );
+    const place = standings.findIndex((other) => compare(standing, other) === 0) + 1;
+    const bottle = event.revealed ? event.bottles.find((entry) => entry.id === bottleId) : undefined;
+    return {
+      cup, score, place,
+      first: ranks.filter((rank) => rank === 1).length,
+      last: ranks.filter((rank) => rank === standings.length).length,
+      ...(bottle ? {
+        bottle: bottle.name,
+        owner: event.participants.find((participant) => participant.id === bottle.ownerId)?.name ?? "",
+      } : {}),
+    };
+  });
+  const rankings = flight.ballots.map((ballot) => ({
+    taster: event.participants.find((participant) => participant.id === ballot.participantId)?.name ?? "Taster",
+    entries: Object.fromEntries(ballot.entries.map((entry) => [
+      cupFor(entry.bottleId),
+      { rank: entry.rank, score: entryScore(entry, flight.bottleIds.length, !!flight.runoffKey) },
+    ])),
+  }));
+  return { cups, rankings, sharedAt: flight.recapSharedAt ?? 0 };
+}
+
 export function snapshot(e: Event, a: Actor) {
   assert(authorized(e, a), "You are not invited to this event.");
   const admin = isEventAdmin(e, a);
@@ -650,6 +691,7 @@ export function snapshot(e: Event, a: Actor) {
       bottleIds: hiddenCups?g.bottleIds.map(id=>g.publicIds![id]):g.bottleIds,
       cupNumbers:e.workflowVersion===2?Object.fromEntries(g.bottleIds.map(id=>[hiddenCups?g.publicIds![id]:id,g.cupNumbers![id]])):undefined,
       pourGuide:admin&&e.workflowVersion===2?g.bottleIds.map(id=>{const b=e.bottles.find(b=>b.id===id)!;return {cup:g.cupNumbers![id],bottleNumber:b.number,name:b.name,owner:e.participants.find(p=>p.id===b.ownerId)?.name??""};}).sort((a,b)=>a.cup-b.cup):undefined,
+      recap: flightRecap(e, g),
       runoff: !!g.runoffKey,
       submitted: g.ballots.length,
       submittedIds: admin ? g.ballots.map((b) => b.participantId) : undefined,
