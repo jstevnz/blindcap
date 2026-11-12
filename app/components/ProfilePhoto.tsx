@@ -14,17 +14,15 @@ async function photo(file: File): Promise<Blob> {
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = "#f6f1e7";
   ctx.fillRect(0, 0, 384, 384);
-  const edge = Math.min(bitmap.width, bitmap.height);
+  const scale = (canvas.width / Math.min(bitmap.width, bitmap.height)) * 0.85;
+  const width = bitmap.width * scale;
+  const height = bitmap.height * scale;
   ctx.drawImage(
     bitmap,
-    (bitmap.width - edge) / 2,
-    (bitmap.height - edge) / 2,
-    edge,
-    edge,
-    0,
-    0,
-    384,
-    384,
+    (canvas.width - width) / 2,
+    (canvas.height - height) / 2,
+    width,
+    height,
   );
   bitmap.close();
   const blob = await new Promise<Blob | null>((resolve) =>
