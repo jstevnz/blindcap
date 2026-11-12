@@ -86,6 +86,13 @@ export default function BourbonRules({
           weight. Revise until the host closes the flight; all tasters must
           submit before closing.
         </p>
+        <h2>Between flights</h2>
+        <p>
+          After closing a flight, the host can share a blind recap. Tasters can
+          compare cup scores, see each person’s ranks and scores, and discuss
+          which cups split opinions. The host opens the next flight when it is
+          ready. Bottle names and owners stay hidden until the final reveal.
+        </p>
         <h2>Moving on</h2>
         <p>
           Current-round scores decide advancement. Ties break by preference
@@ -115,8 +122,10 @@ export default function BourbonRules({
         <h2>The reveal</h2>
         <p>
           Your host controls the reveal of bottle identities, owners, standings
-          and awards. First earns {winnerAward}; last earns {swillAward}. Your
-          individual ballots remain private.
+          and awards. First earns {winnerAward}. Last earns {swillAward}.
+          After the reveal, every flight recap includes the bottle names and
+          owners. Individual ratings for aroma, flavor, smoothness and
+          enjoyment remain private.
         </p>
       </section>
       <a href={`/event/${eventId}`}>← Back to your event</a>

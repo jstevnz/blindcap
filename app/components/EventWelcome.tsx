@@ -79,7 +79,9 @@ export default function EventWelcome({ id }: { id: string }) {
                   and overall enjoyment each contribute 5%. Rank every cup once
                   and score each attribute from 1 to 10. Your host opens and
                   closes each flight, resolves blind ties, and controls the
-                  reveal.
+                  reveal. After a flight closes, the host may share cup scores
+                  and each taster’s ranks and scores. Bottle names and owners
+                  stay hidden until the final reveal.
                 </p>
                 <p>
                   Depending on the size of the field, bottles advance through

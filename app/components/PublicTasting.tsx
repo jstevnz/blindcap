@@ -54,7 +54,8 @@ export function PublicTasting() {
             <li><h3>Taste the numbered pours.</h3><p>Your host opens the flight and serves the samples in numbered cups. Everyone tastes the same pours while the bottle names stay hidden.</p></li>
             <li><h3>Score and rank on your phone.</h3><p>Rate aroma, flavor, smoothness and overall enjoyment from 1 to 10. Then give each pour a unique preference rank. For example, Cup 02 might be your favorite, Cup 01 second and Cup 03 third.</p></li>
             <li><h3>Submit your ballot.</h3><p>You can revise it until the host closes the flight. Preference is 80% of the bourbon round score. Each of the four tasting ratings contributes 5%.</p></li>
-            <li><h3>See what you picked.</h3><p>In a tournament, the top pours advance. When the event ends and the host reveals the results, you can match the cup numbers to the bottles and revisit your rankings.</p></li>
+            <li><h3>Compare notes between flights.</h3><p>After closing a flight, the host can share the winning cup, cup scores, and each taster’s ranks and scores. Bottle names and owners stay hidden.</p></li>
+            <li><h3>See what you picked.</h3><p>In a tournament, the top pours advance. When the event ends and the host reveals the results, each flight recap adds the bottle names and owners alongside the final standings and awards.</p></li>
           </ol>
         </div>
         <div className="phone-previews" aria-label="BlindCap mobile screenshots using sample data">

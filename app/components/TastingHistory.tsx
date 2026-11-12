@@ -52,7 +52,7 @@ export default function TastingHistory() {
       <section className="panel">
         <h2>My Events & tasting history</h2>
         <p>
-          Revisit your submitted bottles, awards, fellow participants and revealed outcomes. Your scoring selections remain private.
+          Revisit your submitted bottles, awards, fellow participants and revealed outcomes. Flight recaps show individual ranks and scores. Your individual tasting-attribute ratings are visible only to you.
         </p>
         {loading&&<BlindcapLoading label="Loading your history…" />}
         {upcoming.map(e=><a className="event-link" key={e.id} href={`/event/${e.id}`}><strong>{e.title}</strong><span>{e.phase==="setup"?"Complete event profile":"Open event"} →</span>{e.ownBottle&&<small>Your bottle: {e.ownBottle.name}{e.ownBottle.proof?` · ${e.ownBottle.proof} proof`:""}</small>}</a>)}
