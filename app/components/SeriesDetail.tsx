@@ -166,6 +166,37 @@ export default function SeriesPage() {
               onSaved={load}
             />
           )}
+          {detail.canManage && (
+            <section className="panel">
+              <h2>Award names</h2>
+              <p>These names appear in the series leaderboard, event reveals, and member trophy cabinets.</p>
+              <form onSubmit={(event) => {
+                event.preventDefault();
+                if (busy) return;
+                const values = new FormData(event.currentTarget);
+                void run(async () => {
+                  const saved = await api("rename-awards", {
+                    winnerAward: values.get("winnerAward"),
+                    swillAward: values.get("swillAward"),
+                  });
+                  setDetail((current) => current && ({
+                    ...current,
+                    winnerAward: saved.winnerAward,
+                    swillAward: saved.swillAward,
+                  }));
+                  setNotice("Award names saved.");
+                });
+              }} key={JSON.stringify([detail.id, detail.winnerAward, detail.swillAward])}>
+                <label>Winner award
+                  <input name="winnerAward" defaultValue={detail.winnerAward} required maxLength={80} />
+                </label>
+                <label>Last-place award
+                  <input name="swillAward" defaultValue={detail.swillAward} required maxLength={80} />
+                </label>
+                <button type="submit" disabled={busy}>Save award names</button>
+              </form>
+            </section>
+          )}
           <section className="panel">
             <h2>The running leaderboard</h2>
             <p>

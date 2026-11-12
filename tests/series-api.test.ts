@@ -57,6 +57,7 @@ function fixture() {
   class Query {
     filters: ((r: any) => boolean)[] = [];
     deleting = false;
+    changes: Record<string, unknown> | null = null;
     constructor(readonly table: string) {}
     select() {
       return this;
@@ -78,6 +79,10 @@ function fixture() {
     order() {
       return this;
     }
+    update(changes: Record<string, unknown>) {
+      this.changes = changes;
+      return this;
+    }
     delete() {
       this.deleting = true;
       return this;
@@ -86,6 +91,7 @@ function fixture() {
       const rows = tables[this.table] ?? [];
       const matched = rows.filter((row) => this.filters.every((filter) => filter(row)));
       if (this.deleting) tables[this.table] = rows.filter((row) => !matched.includes(row));
+      if (this.changes) matched.forEach((row) => Object.assign(row, this.changes));
       return { data: matched, error: null };
     }
     maybeSingle() {
@@ -292,4 +298,23 @@ test("series deletion requires its owner or the site owner and confirmation of t
   assert.deepEqual(await seriesAction(deletion, db, actor("owner")), { deleted: true });
   assert.equal(tables.bourbon_series.length, 0);
   assert.equal(tables.bourbon_events.length, 1);
+});
+
+
+test("series managers can rename both awards without changing edition records", async () => {
+  const { db, tables } = fixture();
+  const originalEditions = structuredClone(tables.bourbon_editions);
+  const change = {
+    operation: "rename-awards",
+    seriesId: "series",
+    winnerAward: " The Yorktown Tumbler ",
+    swillAward: "The Swill Award",
+  };
+  await assert.rejects(seriesAction(change, db, actor("invited")), /Only the series creator/);
+  await assert.rejects(seriesAction({ ...change, swillAward: " " }, db, actor("host")), /1–80/);
+  const saved = await seriesAction(change, db, actor("owner"));
+  assert.deepEqual(saved, { winnerAward: "The Yorktown Tumbler", swillAward: "The Swill Award" });
+  assert.equal(tables.bourbon_series[0].winner_award, "The Yorktown Tumbler");
+  assert.equal(tables.bourbon_series[0].swill_award, "The Swill Award");
+  assert.deepEqual(tables.bourbon_editions, originalEditions);
 });

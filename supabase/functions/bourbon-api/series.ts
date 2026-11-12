@@ -184,6 +184,20 @@ export async function seriesAction(
     throw new Error(
       "Only the series creator or site owner can manage its history and editions.",
     );
+  if (input.operation === "rename-awards") {
+    if (typeof input.winnerAward !== "string" || typeof input.swillAward !== "string") {
+      throw new Error("Enter both award names.");
+    }
+    const winnerAward = text(input.winnerAward, 80);
+    const swillAward = text(input.swillAward, 80);
+    let update = db.from("bourbon_series")
+      .update({ winner_award: winnerAward, swill_award: swillAward })
+      .eq("id", s.id);
+    if (!global) update = update.eq("owner_id", a.id);
+    const { data, error } = await update.select("id").maybeSingle();
+    if (error || !data) throw new Error("Unable to save these award names. Refresh and try again.");
+    return { winnerAward, swillAward };
+  }
   if (input.operation === "delete-series") {
     if (input.confirmed !== true || input.title !== s.title) {
       throw new Error("Confirm the named series before deleting it.");
