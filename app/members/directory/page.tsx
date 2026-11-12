@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Avatar from "@/app/components/Avatar";
 import BlindcapLoading from "@/app/components/BlindcapLoading";
 import LoadingLink from "@/app/components/LoadingLink";
 import { request } from "@/lib/browser";
@@ -8,6 +9,7 @@ import { request } from "@/lib/browser";
 const labels = { active: "Approved", pending: "Pending approval", suspended: "Disabled" };
 type Participant = {
   id: string;
+  avatarUrl?: string | null;
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
@@ -87,12 +89,17 @@ export default function ParticipantDirectory() {
           {rows.length > 0 ? (
             <div className="table-scroll">
               <table>
-                <thead><tr><th scope="col">Participant</th><th scope="col">Status</th><th scope="col">Signup date</th></tr></thead>
+                <thead><tr><th scope="col">Profile photo</th><th scope="col">Participant</th><th scope="col">Status</th><th scope="col">Signup date</th></tr></thead>
                 <tbody>
                   {rows.map((person) => (
                     <tr key={person.id}>
+                      <td><span className="result-person"><Avatar name={participantName(person)} url={person.avatarUrl} /></span></td>
                       <th scope="row">{participantName(person)}<small className="flight-recap-identity">{person.email}</small></th>
-                      <td>{labels[person.status]}</td>
+                      <td>
+                        {person.status === "pending"
+                          ? <LoadingLink href={`/members?review=${encodeURIComponent(person.id)}#review-${encodeURIComponent(person.id)}`}>Pending approval</LoadingLink>
+                          : labels[person.status]}
+                      </td>
                       <td><time dateTime={person.created_at}>{new Date(person.created_at).toLocaleDateString()}</time></td>
                     </tr>
                   ))}

@@ -34,6 +34,16 @@ export default function Members() {
   useEffect(() => {
     if (target && !dialog.current?.open) dialog.current?.showModal();
   }, [target]);
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get("review");
+    if (!rows || !id) return;
+    const review = document.getElementById(`review-${id}`);
+    if (review) {
+      review.scrollIntoView({ block: "start" });
+      review.focus({ preventScroll: true });
+    }
+  }, [rows]);
+
   async function review(p: Applicant, decision: "approve" | "delete") {
     if (busy) return;
     setBusy(true);
@@ -101,7 +111,7 @@ export default function Members() {
           </div>
           {!rows.length && <p>No signups awaiting review.</p>}
           {rows.map((p) => (
-            <article className="managed-event" key={p.id}>
+            <article className="managed-event" key={p.id} id={`review-${p.id}`} tabIndex={-1}>
               <h3>{p.full_name || p.display_name}</h3>
               <p>
                 {p.display_name}
