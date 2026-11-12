@@ -68,6 +68,7 @@ export default function Members() {
         <h1>Signup reviews.</h1>
         <a href="/">← Home</a>
       </div>
+      <p><a href="/members/directory">Browse all participants →</a></p>
       <p>
         Review pending profiles. An applicant must verify their email before you
         can approve them. Only approved profiles can host events or appear in

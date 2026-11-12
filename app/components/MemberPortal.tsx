@@ -219,6 +219,13 @@ export default function MemberPortal({
             ) : <p>{recaps ? "Your results will appear here once a host reveals a tasting you joined." : "Your tasting history is available from History & awards."}</p>}
           </section>
 
+          {owner ? (
+            <section className="portal-card">
+              <h2>Participant directory</h2>
+              <p>Search signups and see who’s approved or awaiting review.</p>
+              <LoadingLink href="/members/directory">Browse all participants →</LoadingLink>
+            </section>
+          ) : (
           <section className="portal-card">
             <div className="portal-card-heading">
               <h2>At your table</h2>
@@ -235,6 +242,7 @@ export default function MemberPortal({
               </ul>
             ) : <p>Open Events to check invitations, manage tastings, and browse event series.</p>}
           </section>
+          )}
           <section className="portal-card portal-host">
             <h2>Host a tasting</h2>
             <p>{hosted?.length ? `${hosted.length} hosted ${hosted.length === 1 ? "event" : "events"}. ` : ""}Create an event, invite your group, and run a blind tasting.</p>

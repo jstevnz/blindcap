@@ -859,3 +859,11 @@ test("portal invitations show newest pending seats first and include the event's
   assert.equal(result.invitations[1].logoUrl, null);
   assert.equal(f.calls.filter(call => call.name === "link_bourbon_reserved_participants").length, 1);
 });
+
+test("the participant directory rejects regular members", async () => {
+  const { db } = fixture();
+  await assert.rejects(
+    communityAction({ operation: "participant-directory" }, db, member, req()),
+    /Only the community owner/,
+  );
+});
