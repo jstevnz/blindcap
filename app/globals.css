@@ -1480,3 +1480,16 @@ body:has(.member-portal) > footer {
   letter-spacing: -.035em;
   overflow-wrap: anywhere;
 }
+
+.result-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  vertical-align: middle;
+}
+.result-person .profile-avatar {
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  font-size: 11px;
+}

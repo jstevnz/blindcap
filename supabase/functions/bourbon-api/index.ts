@@ -3,7 +3,7 @@ import {isBlindLocked,blindAccessChange} from "./blind-access.ts";
 import {canManageTeam,setCoAdmins,eventTeam,mailingList} from "./event-team.ts";
 import {seriesLogoUrl} from "./series-logos.ts";
 import { seriesAction } from "./series.ts";
-import { photoAction } from "./photos.ts";
+import { photoAction, resultPeople } from "./photos.ts";
 import { canDeleteEvent, eventSummary } from "./event-management.ts";
 import { communityAction, getProfile, rate, send } from "./community.ts";
 import { historyFor, currentParticipation } from "./community-shared.ts";
@@ -406,8 +406,10 @@ Deno.serve(async (req: Request) => {
         .eq("event_id", event.id);
       const {data:edition} = await db.from("bourbon_editions").select("series_id,year").eq("event_id",event.id).maybeSingle();
       const series = edition ? (await db.from("bourbon_series").select("id,title,winner_award,swill_award,logo_path").eq("id",edition.series_id).single()).data : null;
+      const view = snapshot(event, a);
       return json({
-        ...snapshot(event, a),
+        ...view,
+        resultPeople: await resultPeople(db, event, view),
         enrollmentProgress:event.workflowVersion===2?{confirmed:(memberInvites??[]).filter(i=>i.status==="accepted").length,complete:event.bottles.filter(b=>b.name&&b.distillery&&b.proof).length}:null,
         series:series ? {id:series.id,title:series.title,year:edition!.year,logoUrl:await seriesLogoUrl(db,series.logo_path),winnerAward:series.winner_award,swillAward:series.swill_award} : null,
         memberInvitations:
@@ -584,7 +586,8 @@ Deno.serve(async (req: Request) => {
         },
         409,
       );
-    return json(snapshot(next, a));
+    const view = snapshot(next, a);
+    return json({ ...view, resultPeople: await resultPeople(db, next, view) });
   } catch (error) {
     return json(
       {

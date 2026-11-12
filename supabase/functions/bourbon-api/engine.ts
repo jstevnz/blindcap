@@ -638,11 +638,13 @@ function flightRecap(event: Event, flight: Group) {
       last: ranks.filter((rank) => rank === standings.length).length,
       ...(bottle ? {
         bottle: bottle.name,
+        ownerParticipantId: bottle.ownerId,
         owner: event.participants.find((participant) => participant.id === bottle.ownerId)?.name ?? "",
       } : {}),
     };
   });
   const rankings = flight.ballots.map((ballot) => ({
+    participantId: ballot.participantId,
     taster: event.participants.find((participant) => participant.id === ballot.participantId)?.name ?? "Taster",
     entries: Object.fromEntries(ballot.entries.map((entry) => [
       cupFor(entry.bottleId),
@@ -664,6 +666,7 @@ export function snapshot(e: Event, a: Actor) {
     id: e.id,
     workflowVersion:e.workflowVersion,
     rosterInvited:!!e.rosterInvited,
+    resultPeople: {} as Record<string, { name: string; avatarUrl: string | null }>,
     ownBottle:e.workflowVersion===2&&ownBottle?{name:ownBottle.name,distillery:ownBottle.distillery??"",proof:ownBottle.proof??null}:null,
     series: null as {id:string;title:string;year:number;logoUrl?:string|null;winnerAward:string;swillAward:string}|null,
     title: e.title,

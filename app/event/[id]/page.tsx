@@ -8,6 +8,7 @@ import EventWelcome from "@/app/components/EventWelcome";
 import PhysicalMailingList from "@/app/components/PhysicalMailingList";
 import EventTeam from "@/app/components/EventTeam";
 import FlightRecap from "@/app/components/FlightRecap";
+import ResultPerson from "@/app/components/ResultPerson";
 import Awards from "@/app/components/Awards";
 import { request } from "@/lib/browser";
 type Row = {
@@ -148,6 +149,11 @@ export default function EventPage({
   const latestRecap = [...recaps].sort((a, b) => (b.recap?.sharedAt ?? 0) - (a.recap?.sharedAt ?? 0))[0];
   if (e.workflowVersion === 2 && !e.admin && e.phase === "setup")
     return <EventWelcome id={id} />;
+  const ownerForBottle = (id: string) => {
+    const entry = e.bottles.find((bottle) => bottle.id === id);
+    if (!entry || !("ownerId" in entry)) return undefined;
+    return e.resultPeople?.[entry.ownerId] ?? e.participants.find((person) => person.id === entry.ownerId);
+  };
   const current = e.groups.find((g) => g.status === "open");
   const myBottle = e.bottles.find(
     (b) => "ownerId" in b && b.ownerId === e.participantId,
@@ -265,7 +271,7 @@ export default function EventPage({
           </section>
           {!current && !e.revealed && latestRecap && (
             <>
-              <FlightRecap flight={latestRecap} />
+              <FlightRecap flight={latestRecap} people={e.resultPeople ?? {}} />
               <button className="secondary" onClick={() => setTab("results")}>See all shared flight recaps</button>
             </>
           )}
@@ -888,6 +894,7 @@ export default function EventPage({
               )}
               <Awards
                 results={e.results}
+                owner={ownerForBottle}
                 label={label}
                 winnerAward={e.series?.winnerAward}
                 swillAward={e.series?.swillAward}
@@ -945,14 +952,11 @@ export default function EventPage({
                             <td className="place">{r.place}</td>
                             <td>
                               <strong>{label(r.bottleId)}</strong>
-                              <small>
-                                {b && "ownerId" in b
-                                  ? e.participants.find(
-                                      (p) => p.id === b.ownerId,
-                                    )?.name
-                                  : ""}{" "}
-                                · Bottle {b?.number}
-                              </small>
+                              <small>Bottle {b?.number}</small>
+                              {(() => {
+                                const owner = ownerForBottle(r.bottleId);
+                                return owner && <ResultPerson {...owner} />;
+                              })()}
                             </td>
                             {(["opening", "semifinal", "final"] as const).map(
                               (s) => (
@@ -1028,7 +1032,7 @@ export default function EventPage({
           {recaps.length > 0 && (
             <section aria-labelledby="flight-recaps-heading">
               <h2 id="flight-recaps-heading">{e.revealed ? "Round-by-round results" : "Shared blind flight recaps"}</h2>
-              {recaps.map((flight) => <FlightRecap key={flight.id} flight={flight} />)}
+              {recaps.map((flight) => <FlightRecap key={flight.id} flight={flight} people={e.resultPeople ?? {}} />)}
             </section>
           )}
         </>

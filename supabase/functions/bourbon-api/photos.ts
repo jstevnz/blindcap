@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getProfile, rate } from "./community.ts";
-import type { Actor } from "./engine.ts";
+import type { Actor, Event, Snapshot } from "./engine.ts";
 const bucket = "blindcap-avatars";
 export async function avatarUrl(db: SupabaseClient, path?: string | null) {
   if (!path) return null;
@@ -53,4 +53,21 @@ export async function photoAction(
     return { removed: true };
   }
   throw new Error("Unknown photo action.");
+}
+
+export async function resultPeople(db: SupabaseClient, event: Event, view: Snapshot) {
+  if (!view.results && !view.groups.some((group) => group.recap)) return {};
+  const accountIds = [...new Set(event.participants.flatMap((seat) => seat.accountId ? [seat.accountId] : []))];
+  const { data } = accountIds.length
+    ? await db.from("bourbon_profiles").select("id,full_name,first_name,last_name,avatar_path").in("id", accountIds).eq("status", "active")
+    : { data: [] };
+  const profiles = new Map(data?.map((profile) => [profile.id, profile]));
+  return Object.fromEntries(await Promise.all(event.participants.map(async (seat) => {
+    const profile = seat.accountId ? profiles.get(seat.accountId) : undefined;
+    const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim()
+      || profile?.full_name?.trim()
+      || [seat.firstName, seat.lastName].filter(Boolean).join(" ").trim()
+      || seat.name;
+    return [seat.id, { name: fullName, avatarUrl: await avatarUrl(db, profile?.avatar_path) }] as const;
+  })));
 }

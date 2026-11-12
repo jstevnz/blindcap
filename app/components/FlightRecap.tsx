@@ -1,8 +1,9 @@
+import ResultPerson from "./ResultPerson";
 import type { Snapshot } from "@/lib/engine";
 
 type Flight = Snapshot["groups"][number];
 
-export default function FlightRecap({ flight }: { flight: Flight }) {
+export default function FlightRecap({ flight, people }: { flight: Flight; people: Snapshot["resultPeople"] }) {
   const recap = flight.recap;
   if (!recap) return null;
   const cups = [...recap.cups].sort((a, b) => a.cup - b.cup);
@@ -29,7 +30,12 @@ export default function FlightRecap({ flight }: { flight: Flight }) {
                 <td>{cup.place}</td>
                 <th scope="row">
                   Cup {cup.cup}
-                  {cup.bottle && <small className="flight-recap-identity">{cup.bottle}{cup.owner && ` · ${cup.owner}`}</small>}
+                  {cup.bottle && (
+                    <div className="flight-recap-identity">
+                      <div>{cup.bottle}</div>
+                      {cup.owner && <ResultPerson {...(people[cup.ownerParticipantId ?? ""] ?? { name: cup.owner })} />}
+                    </div>
+                  )}
                 </th>
                 <td>{cup.score.toFixed(2)}</td><td>{cup.first}</td><td>{cup.last}</td>
               </tr>
@@ -51,9 +57,9 @@ export default function FlightRecap({ flight }: { flight: Flight }) {
               <tr><th scope="col">Taster</th>{cups.map((cup) => <th scope="col" key={cup.cup}>Cup {cup.cup}</th>)}</tr>
             </thead>
             <tbody>
-              {recap.rankings.map((ballot, index) => (
-                <tr key={index}>
-                  <th scope="row">{ballot.taster}</th>
+              {recap.rankings.map((ballot) => (
+                <tr key={ballot.participantId}>
+                  <th scope="row"><ResultPerson {...(people[ballot.participantId] ?? { name: ballot.taster })} /></th>
                   {cups.map((cup) => {
                     const entry = ballot.entries[cup.cup];
                     return (
