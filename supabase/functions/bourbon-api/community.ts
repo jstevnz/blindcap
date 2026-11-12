@@ -434,7 +434,7 @@ export async function communityAction(
     const pageSize = 200;
     for (let offset = 0; ; offset += pageSize) {
       const { data, error } = await db.from("bourbon_profiles")
-        .select("id,first_name,last_name,full_name,display_name,email,status,created_at")
+        .select("id,first_name,last_name,full_name,display_name,email,status,created_at,avatar_path")
         .order("created_at", { ascending: false })
         .order("id", { ascending: true })
         .range(offset, offset + pageSize - 1);
@@ -442,7 +442,12 @@ export async function communityAction(
       participants.push(...(data ?? []));
       if (!data || data.length < pageSize) break;
     }
-    return { participants };
+    return {
+      participants: await Promise.all(participants.map(async ({ avatar_path, ...person }) => ({
+        ...person,
+        avatarUrl: await avatarUrl(db, avatar_path),
+      }))),
+    };
   }
   if (op === "pending-members") {
     const { data, error } = await db.rpc("pending_bourbon_members", {
