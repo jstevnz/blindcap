@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { browser, configured, request } from "@/lib/browser";
 type Self = {
   profile: {
-    username: string;
     avatarUrl?: string | null;
     displayName: string;
     status: string;
@@ -152,11 +151,10 @@ export default function Home() {
               </p>
             )}
             {self?.profile?.status === "pending" ? (
-              <p className="notice">
-                Your profile is pending administrator approval. You can edit
-                your profile while waiting. Hosting and event invitations become
-                available after approval.
-              </p>
+              <section className="notice" aria-labelledby="approval-status">
+                <h3 id="approval-status">Awaiting administrator approval</h3>
+                <p>Your email is verified. You can view and edit your profile while your application is reviewed. Once approved, you can join and host events.</p>
+              </section>
             ) : (
               <div className="event-list">
                 {events.map((e) => (
@@ -196,9 +194,13 @@ export default function Home() {
                   if (mode === "password") {
                     const d = await request("/api/community", {
                       operation: "login",
-                      identifier,
+                      email: identifier,
                       password,
                     });
+                    if (d.verificationRequired) {
+                      location.assign("/account/verify-email");
+                      return;
+                    }
                     const { error } = await browser().auth.setSession(
                       d.session,
                     );
@@ -218,10 +220,10 @@ export default function Home() {
               }}
             >
               <label>
-                {mode === "password" ? "Username or email" : "Email address"}
+                Email address
                 <input
-                  autoComplete={mode === "password" ? "username" : "email"}
-                  type={mode === "password" ? "text" : "email"}
+                  autoComplete="email"
+                  type="email"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   required

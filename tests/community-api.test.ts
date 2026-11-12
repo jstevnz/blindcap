@@ -412,7 +412,7 @@ test("membership roles and email cannot be changed through profile editing", asy
   const p = f.tables.bourbon_profiles.find((p) => p.id === member.id)!;
   assert.equal(p.role, "member");
   assert.equal(p.email, member.email);
-  assert.equal(p.username, "new_name");
+  assert.equal(p.username, "member");
 });
 
 test("resending verification never changes a pending account’s password or profile", async () => {
@@ -457,7 +457,7 @@ test("resending verification never changes a pending account’s password or pro
     globalThis.fetch = previous;
   }
 });
-test("username login resolves the saved email and delegates password checks to Supabase", async () => {
+test("email login normalizes the email and delegates password checks to Supabase", async () => {
   const f = fixture(),
     previous = globalThis.fetch;
   const oldDeno = Object.getOwnPropertyDescriptor(globalThis, "Deno");
@@ -496,9 +496,8 @@ test("username login resolves the saved email and delegates password checks to S
     const result = await communityAction(
       {
         operation: "login",
-        identifier: " MEMBER ",
+        email: ` ${member.email.toUpperCase()} `,
         password: "correct private password",
-        email: "attacker@example.com",
       },
       f.db,
       null,
@@ -518,8 +517,17 @@ test("username login resolves the saved email and delegates password checks to S
         null,
         req(),
       ),
-      /Username, email or password is incorrect/,
+      /Email or password is incorrect/,
     );
+    f.tables.bourbon_profiles.find((profile) => profile.id === member.id)!.status = "pending";
+    globalThis.fetch = async () => Response.json({
+      error_code: "email_not_confirmed",
+      msg: "Email not confirmed",
+    }, { status: 400 });
+    assert.deepEqual(await communityAction(
+      { operation: "login", email: member.email, password: "correct private password" },
+      f.db, null, req(),
+    ), { verificationRequired: true });
   } finally {
     globalThis.fetch = previous;
     if (oldDeno) Object.defineProperty(globalThis, "Deno", oldDeno);

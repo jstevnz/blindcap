@@ -7,7 +7,6 @@ import MailingAddressFields, {
 export default function Register() {
   const [token, setToken] = useState(""),
     [email, setEmail] = useState(""),
-    [username, setUsername] = useState(""),
     [firstName, setFirstName] = useState(""),
     [lastName, setLastName] = useState(""),
     [name, setName] = useState(""),
@@ -49,7 +48,6 @@ export default function Register() {
         operation: token ? (signedIn ? "enroll" : "register") : "apply",
         token,
         email,
-        username,
         displayName: name,
         firstName,
         lastName,
@@ -63,14 +61,11 @@ export default function Register() {
       setPassword("");
       setSubmitted(true);
       if (token && signedIn) location.replace("/");
-      else
-        setNotice(
-          response.verificationSent === false
-            ? "Your signup was saved. We could not send the verification email yet. Use the email sign-in link on Home to request another. Approval also requires email verification."
-            : response.existingRegistration
-              ? "If you already registered, your original username and password are unchanged. Check your email or use Sign in."
-              : "Check your email to verify your address. Your profile stays pending until the administrator approves it. You can sign in and edit your profile while waiting.",
-        );
+      else if (response.existingRegistration && response.verificationSent === undefined) {
+        setNotice("If you already registered, sign in with your email and password or request an email sign-in link.");
+      } else {
+        location.replace(`/account/verify-email?delivery=${response.verificationSent === true ? "sent" : "retry"}`);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -141,18 +136,6 @@ export default function Register() {
               />
               <small>The name other members see.</small>
             </label>
-            <label>
-              Username
-              <input
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                pattern="[a-zA-Z][a-zA-Z0-9_]{2,23}"
-                minLength={3}
-                maxLength={24}
-                required
-              />
-            </label>
             {!signedIn && (
               <label>
                 Password
@@ -206,7 +189,7 @@ export default function Register() {
               Your full name, phone and city/state are private to you and the
               reviewing administrator. Your email is used for sign-in and event
               invitations and may be seen by your event host. Member searches
-              show only your username, display name and tasting notes after
+              show only your display name and tasting notes after
               approval.
             </p>
             <button disabled={busy || !email}>

@@ -5,7 +5,6 @@ import Avatar from "./Avatar";
 type Member = {
   avatarUrl?: string | null;
   id: string;
-  username: string;
   displayName: string;
   bio: string;
 };
@@ -70,7 +69,7 @@ export default function MemberPicker({
             <input
               value={query}
               maxLength={80}
-              placeholder="Username or display name"
+              placeholder="Name"
               onChange={(e) => setQuery(e.target.value)}
             />
           </label>
@@ -87,7 +86,7 @@ export default function MemberPicker({
               }}
             >
               <Avatar name={p.displayName} url={p.avatarUrl} />
-              {p.displayName} <small>@{p.username}</small>
+              {p.displayName}
               {unavailableIds.includes(p.id) && " · Already added"}
             </button>
           ))}

@@ -129,13 +129,6 @@ export async function communityAction(
       throw new Error(
         "An account already exists for this invitation email. Sign in to join.",
       );
-    const { data: taken } = await db
-      .from("bourbon_profiles")
-      .select("id")
-      .eq("username", fields.username)
-      .maybeSingle();
-    if (taken && taken.id !== existing?.id)
-      throw new Error("That username is already taken.");
     let userId = existing?.id as string | undefined;
     if (userId) {
       if (i.reserved_user_id !== userId)
@@ -159,6 +152,7 @@ export async function communityAction(
       const { error: profileError } = await db.from("bourbon_profiles").insert({
         id: userId,
         email: i.email,
+        username: i.email,
         ...fields,
         ...privateProfileFields(input),
         status: "pending",
@@ -167,7 +161,7 @@ export async function communityAction(
       if (profileError) {
         await db.auth.admin.deleteUser(userId);
         throw new Error(
-          "Unable to reserve this username. Try a different one.",
+          "Unable to save this profile. Please try again.",
         );
       }
     }
@@ -215,20 +209,17 @@ export async function communityAction(
   }
   if (op === "login") {
     await rate(db, "login-ip:" + source, 30, 900);
-    const identifier = String(input.identifier ?? "")
+    const email = String(input.email ?? input.identifier ?? "")
       .trim()
       .toLowerCase();
-    await rate(db, "login-account:" + identifier, 10, 900);
-    if (typeof input.password !== "string" || input.password.length > 128)
-      throw new Error("Username, email or password is incorrect.");
-    const q = db.from("bourbon_profiles").select("email,status");
-    const { data: profile } = await (
-      identifier.includes("@")
-        ? q.eq("email", identifier)
-        : q.eq("username", identifier)
-    ).maybeSingle();
+    await rate(db, "login-account:" + email, 10, 900);
+    if (typeof input.password !== "string" || input.password.length > 128 ||
+        email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      throw new Error("Email or password is incorrect.");
+    const { data: profile } = await db.from("bourbon_profiles")
+      .select("email,status").eq("email", email).maybeSingle();
     if (!profile || !["active", "pending"].includes(profile.status))
-      throw new Error("Username, email or password is incorrect.");
+      throw new Error("Email or password is incorrect.");
     const client = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -238,8 +229,10 @@ export async function communityAction(
       email: profile.email,
       password: input.password,
     });
+    if (profile.status === "pending" && error?.code === "email_not_confirmed")
+      return { verificationRequired: true };
     if (error || !data.session)
-      throw new Error("Username, email or password is incorrect.");
+      throw new Error("Email or password is incorrect.");
     return {
       session: {
         access_token: data.session.access_token,
@@ -326,6 +319,7 @@ export async function communityAction(
       {
         id: a.id,
         email: a.email,
+        username: a.email,
         ...fields,
         ...privateProfileFields(input),
         status: "pending",
@@ -333,7 +327,7 @@ export async function communityAction(
       },
       { onConflict: "id" },
     );
-    if (error) throw new Error("This username may already be taken.");
+    if (error) throw new Error("Unable to save this profile.");
     const { data: reserved, error: reserveError } = await db
       .from("bourbon_community_invites")
       .update({ reserved_user_id: a.id })
@@ -355,7 +349,7 @@ export async function communityAction(
       .from("bourbon_profiles")
       .update(fields)
       .eq("id", a.id);
-    if (error) throw new Error("That username may already be taken.");
+    if (error) throw new Error("Unable to save your profile.");
     return { saved: true };
   }
   active(p);
@@ -371,7 +365,7 @@ export async function communityAction(
       .select("*")
       .eq("status", "active")
       .eq("discoverable", true)
-      .or(`username.ilike.${pattern},display_name.ilike.${pattern}`)
+      .or(`display_name.ilike.${pattern},full_name.ilike.${pattern}`)
       .limit(10);
     if (error) throw new Error("Unable to search community profiles.");
     return { profiles: await Promise.all((data ?? []).map(async (x) => ({...publicProfile(x as Profile),avatarUrl:await avatarUrl(db,x.avatar_path)}))) };

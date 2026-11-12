@@ -38,7 +38,7 @@ function setup() {
   });
   return applyCommand(e, host, { type: "start" });
 }
-test("profile validation normalizes usernames and rejects invalid or oversized fields", () => {
+test("profile validation ignores user-supplied usernames and rejects invalid fields", () => {
   assert.deepEqual(
     profileFields({
       username: " Bourbon_One ",
@@ -46,14 +46,11 @@ test("profile validation normalizes usernames and rejects invalid or oversized f
       bio: " Rye ",
     }),
     {
-      username: "bourbon_one",
       display_name: "Alice",
       bio: "Rye",
       discoverable: true,
     },
   );
-  for (const username of ["ab", "1alice", "alice@example.com", "a".repeat(25)])
-    assert.throws(() => profileFields({ username, displayName: "Alice" }));
   assert.throws(() => profileFields({ username: "alice", displayName: " " }));
   assert.throws(() =>
     profileFields({
@@ -86,7 +83,6 @@ test("searchable profiles never include private email, role or membership status
   };
   assert.deepEqual(publicProfile(p), {
     id: member.id,
-    username: "alice",
     displayName: "Alice",
     bio: "Rye fan",
   });

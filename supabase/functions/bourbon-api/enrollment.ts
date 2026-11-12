@@ -175,18 +175,17 @@ export async function enrollmentAction(
     const pattern = "%" + query.replace(/[_%]/g, "\\$&") + "%";
     const { data, error } = await db
       .from("bourbon_profiles")
-      .select("id,username,display_name,first_name,last_name,full_name")
+      .select("id,display_name,first_name,last_name,full_name")
       .eq("status", "active")
       .eq("discoverable", true)
       .or(
-        `display_name.ilike.${pattern},username.ilike.${pattern},full_name.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`,
+        `display_name.ilike.${pattern},full_name.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`,
       )
       .limit(10);
     if (error) throw new Error("Unable to search member profiles.");
     return {
       profiles: (data ?? []).map((p) => ({
         id: p.id,
-        username: p.username,
         displayName: p.display_name,
         ...profileNames(p),
       })),
@@ -195,7 +194,7 @@ export async function enrollmentAction(
   if (input.operation === "profile") {
     const { data, error } = await db
       .from("bourbon_profiles")
-      .select("id,username,display_name,first_name,last_name,full_name,email")
+      .select("id,display_name,first_name,last_name,full_name,email")
       .eq("id", input.profileId)
       .eq("status", "active")
       .eq("discoverable", true)

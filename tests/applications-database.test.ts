@@ -236,6 +236,15 @@ test("signup approval migration preserves members and requires owner approval be
         );
       },
     );
+    await t.test("email usernames preserve existing identities, approvals and linked event access", async () => {
+      await migrate("20261112191925_email_usernames.sql");
+      assert.equal(await scalar("select count(*)::int from bourbon_profiles where username <> email"), 0);
+      assert.equal(await scalar("select username from bourbon_profiles where id=$1", [host]), "host@example.com");
+      assert.equal(await scalar("select status from bourbon_profiles where id=$1", [applicant]), "active");
+      assert.equal(await scalar("select auth_user_id from bourbon_guest_access where event_id=$1", [event]), applicant);
+      assert.equal(await scalar("select md5(state::text) from bourbon_events where id=$1", [event]), digest);
+      await assert.rejects(db.query("update bourbon_profiles set username='separate_name' where id=$1", [host]), /username_matches_email/);
+    });
   } finally {
     await db.close();
   }

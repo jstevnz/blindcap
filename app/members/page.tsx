@@ -103,7 +103,7 @@ export default function Members() {
             <article className="managed-event" key={p.id}>
               <h3>{p.full_name || p.display_name}</h3>
               <p>
-                {p.display_name} · @{p.username}
+                {p.display_name}
               </p>
               <p>
                 {p.email} ·{" "}
@@ -165,7 +165,7 @@ export default function Members() {
           <p>
             <strong>{target.full_name || target.display_name}</strong>
             <br />
-            {target.email} · @{target.username}
+            {target.email}
           </p>
           <p>
             This removes this pending profile and sign-in account. It cannot be

@@ -127,7 +127,7 @@ function ParticipantSlot({
             <input
               value={query}
               maxLength={80}
-              placeholder="First name, last name or username"
+              placeholder="First or last name"
               onChange={(ev) => {
                 setManual(false);
                 setQuery(ev.target.value);

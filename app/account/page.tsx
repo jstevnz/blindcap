@@ -17,7 +17,6 @@ export default function Account() {
       phone: string;
       location: string;
       mailingAddress: MailingAddress;
-      username: string;
       displayName: string;
       bio: string;
       discoverable: boolean;
@@ -122,18 +121,6 @@ export default function Account() {
                 }
               />
               <label>
-                Username
-                <input
-                  value={p.username}
-                  onChange={(e) =>
-                    setProfile({ ...p, username: e.target.value })
-                  }
-                  minLength={3}
-                  maxLength={24}
-                  required
-                />
-              </label>
-              <label>
                 Display name
                 <input
                   value={p.displayName}
@@ -169,7 +156,7 @@ export default function Account() {
             <h2>Set or change your password</h2>
             <p>
               Your existing email-link login continues to work. Adding a
-              password lets you sign in with your username or email.
+              password lets you sign in with your email.
             </p>
             <form
               onSubmit={(e) => {

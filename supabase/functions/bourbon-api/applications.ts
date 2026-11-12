@@ -39,7 +39,7 @@ export async function notifyOwner(
     await deliver(
       owner.email,
       "Blindcap: a new signup needs your review",
-      `A new Blindcap signup is awaiting your review.\n\nName: ${p.full_name || p.display_name}\nDisplay name: ${p.display_name}\nUsername: ${p.username}\nEmail: ${p.email}\nPhone: ${p.phone || "Not provided"}\nCity/state: ${p.location || "Not provided"}\n\nReview the profile, check email verification, then approve or delete it:\nhttps://blindcap.net/members\n\nThis account cannot host events or appear in member searches until you approve it.`,
+      `A new Blindcap signup is awaiting your review.\n\nName: ${p.full_name || p.display_name}\nDisplay name: ${p.display_name}\nEmail: ${p.email}\nPhone: ${p.phone || "Not provided"}\nCity/state: ${p.location || "Not provided"}\n\nReview the profile, check email verification, then approve or delete it:\nhttps://blindcap.net/members\n\nThis account cannot host events or appear in member searches until you approve it.`,
       id + ":signup-review",
     );
     const { error: saved } = await db
@@ -93,12 +93,6 @@ export async function applyForMembership(
   let userId = existing?.id as string | undefined;
   if (!userId) {
     await services.limit("signup-new-daily", 25, 86400);
-    const { data: taken } = await db
-      .from("bourbon_profiles")
-      .select("id")
-      .eq("username", fields.username)
-      .maybeSingle();
-    if (taken) throw new Error("That username is already taken.");
     const { data: created, error } = await db.auth.admin.createUser({
       email,
       password: input.password,
@@ -120,6 +114,7 @@ export async function applyForMembership(
     const { error: profileError } = await db.from("bourbon_profiles").insert({
       id: userId,
       email,
+      username: email,
       ...fields,
       status: "pending",
       role: "member",
@@ -128,7 +123,7 @@ export async function applyForMembership(
     });
     if (profileError) {
       await db.auth.admin.deleteUser(userId);
-      throw new Error("Unable to save this profile. Try another username.");
+      throw new Error("Unable to save this profile. Please try again.");
     }
   }
   const id = userId!;
@@ -143,7 +138,7 @@ export async function applyForMembership(
     await services.deliver(
       email,
       "Verify your Blindcap signup",
-      `Hi ${existing?.display_name ?? fields.display_name},\n\nVerify your email to finish your Blindcap signup:\nhttps://blindcap.net/account/confirm#token_hash=${link.properties.hashed_token}&type=email\n\nYour profile will stay pending until the community owner approves it. You can sign in and edit your profile while waiting.\n\nIf you did not request this account, ignore this message.`,
+      `Hi ${existing?.display_name ?? fields.display_name},\n\nVerify your email to finish your Blindcap signup:\nhttps://blindcap.net/account/confirm#token_hash=${link.properties.hashed_token}&type=email\n\nYour profile will stay pending until the community owner approves it. After verifying your email, you can sign in and see your approval status.\n\nIf you did not request this account, ignore this message.`,
       id + ":verify:" + link.properties.hashed_token,
     );
   };
