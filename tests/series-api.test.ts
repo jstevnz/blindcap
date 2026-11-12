@@ -56,6 +56,7 @@ function fixture() {
   const uploads: string[] = [];
   class Query {
     filters: ((r: any) => boolean)[] = [];
+    deleting = false;
     constructor(readonly table: string) {}
     select() {
       return this;
@@ -77,13 +78,15 @@ function fixture() {
     order() {
       return this;
     }
+    delete() {
+      this.deleting = true;
+      return this;
+    }
     result() {
-      return {
-        data: (tables[this.table] ?? []).filter((r) =>
-          this.filters.every((f) => f(r)),
-        ),
-        error: null,
-      };
+      const rows = tables[this.table] ?? [];
+      const matched = rows.filter((row) => this.filters.every((filter) => filter(row)));
+      if (this.deleting) tables[this.table] = rows.filter((row) => !matched.includes(row));
+      return { data: matched, error: null };
     }
     maybeSingle() {
       return Promise.resolve({
@@ -276,4 +279,17 @@ test("only standalone events may be attached, including for the community owner"
  const result:any=await seriesAction({operation:"attach-event",seriesId:"series",eventId:"standalone",year:2026},db,actor("owner"));
  assert.equal(result.saved,true);assert.equal(tables.bourbon_editions.length,2);
  await assert.rejects(seriesAction({operation:"attach-event",seriesId:"second",eventId:"standalone",year:2027},db,actor("host")),/already belongs/);
+});
+
+
+test("series deletion requires its owner or the site owner and confirmation of the exact name", async () => {
+  const { db, tables } = fixture();
+  const deletion = { operation: "delete-series", seriesId: "series", title: "Yorktown", confirmed: true };
+  await assert.rejects(seriesAction(deletion, db, actor("invited")), /Only the series creator/);
+  await assert.rejects(seriesAction({ ...deletion, confirmed: false }, db, actor("owner")), /Confirm the named series/);
+  await assert.rejects(seriesAction({ ...deletion, title: "Old title" }, db, actor("host")), /Confirm the named series/);
+  assert.equal(tables.bourbon_series.length, 1);
+  assert.deepEqual(await seriesAction(deletion, db, actor("owner")), { deleted: true });
+  assert.equal(tables.bourbon_series.length, 0);
+  assert.equal(tables.bourbon_events.length, 1);
 });

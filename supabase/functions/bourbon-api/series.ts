@@ -1,7 +1,7 @@
 import {canDeleteEvent} from "./event-management.ts";
 import {isBlindLocked} from "./blind-access.ts";
 import {requireEventType,eventTypeFor} from "./event-types.ts";
-import { seriesLogoUrl, seriesLogoAction } from "./series-logos.ts";
+import { logoBucket, seriesLogoUrl, seriesLogoAction } from "./series-logos.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createEvent, type Actor, type Event } from "./engine.ts";
 import { getProfile, rate } from "./community.ts";
@@ -184,6 +184,21 @@ export async function seriesAction(
     throw new Error(
       "Only the series creator or site owner can manage its history and editions.",
     );
+  if (input.operation === "delete-series") {
+    if (input.confirmed !== true || input.title !== s.title) {
+      throw new Error("Confirm the named series before deleting it.");
+    }
+    // The existing foreign keys remove the series records and links atomically.
+    let deletion = db.from("bourbon_series").delete().eq("id", s.id).eq("title", s.title);
+    if (!global) deletion = deletion.eq("owner_id", a.id);
+    const { data: removed, error } = await deletion.select("id,logo_path").maybeSingle();
+    if (error) throw new Error("Unable to delete the series. Please try again.");
+    if (!removed) throw new Error("The series changed. Refresh before confirming deletion again.");
+    if (removed.logo_path) {
+      await db.storage.from(logoBucket).remove([removed.logo_path]).catch(() => {});
+    }
+    return { deleted: true };
+  }
   if(input.operation === "delete-history") {
     if(input.confirmed!==true || input.title!==s.title || !Number.isInteger(input.revision) || !Number.isInteger(input.year) || typeof input.editionId!=="string")throw new Error("Confirm the named historical year before deleting it.");
     const {data:removed,error}=await db.rpc("delete_bourbon_historical_edition",{p_id:input.editionId,p_series:s.id,p_actor:a.id,p_revision:input.revision,p_year:input.year,p_title:input.title});

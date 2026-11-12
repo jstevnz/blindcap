@@ -184,7 +184,14 @@ test("series migration preserves event state, rejects public access, and atomica
         owner,
       ]),
     );
+    await assert.rejects(db.query("delete from bourbon_series where id=$1", [series]));
     await db.exec("reset role");
+    await db.exec("set role service_role");
+    await db.query("delete from bourbon_series where id=$1", [series]);
+    await db.exec("reset role");
+    assert.equal((await db.query("select id from bourbon_editions where series_id=$1", [series])).rows.length, 0);
+    assert.equal((await db.query("select id from bourbon_events where id=$1", [event.id])).rows.length, 1);
+    assert.equal((await db.query("select id from bourbon_series where id=$1", [otherSeries])).rows.length, 1);
     assert.equal(
       (
         await db.query<{ public: boolean }>(

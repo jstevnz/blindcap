@@ -120,6 +120,16 @@ export default function SeriesPage() {
       await load();setNotice(`${title} was deleted. The series and other years are unchanged.`);
     });
   }
+  async function removeSeries() {
+    if (!detail?.canManage || busy) return;
+    if (!window.confirm(
+      `Permanently delete “${detail.title}”? This removes its imported historical results, leaderboard, and series awards. Linked BlindCap events will become standalone events and keep their scores and invitations.`,
+    )) return;
+    await run(async () => {
+      await api("delete-series", { title: detail.title, confirmed: true });
+      location.assign("/events");
+    });
+  }
   const field = (i: number, key: keyof Entry, value: string) =>
     setEntries((rows) =>
       rows.map((r, j) => (i === j ? { ...r, [key]: value } : r)),
@@ -605,6 +615,13 @@ export default function SeriesPage() {
                   )}
                 </section>
               )}
+              <section className="panel">
+                <h2>Delete series</h2>
+                <p>Remove this series and its historical records. Linked events will become standalone events and keep their scores and invitations.</p>
+                <button className="secondary danger-outline" type="button" disabled={busy} onClick={removeSeries}>
+                  Delete series
+                </button>
+              </section>
             </>
           )}
         </>
