@@ -145,7 +145,9 @@ export default function SeriesPage() {
           alt={`${detail.title} logo`}
         />
       )}
-      <h1>{detail?.title ?? "Event series."}</h1>
+      <div className="series-title-wrap">
+        <h1>{detail?.title ?? "Event series."}</h1>
+      </div>
       {error && (
         <p role="alert" className="error">
           {error}
