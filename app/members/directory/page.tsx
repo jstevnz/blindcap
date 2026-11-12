@@ -93,7 +93,7 @@ export default function ParticipantDirectory() {
                 <tbody>
                   {rows.map((person) => (
                     <tr key={person.id}>
-                      <td><span className="result-person"><Avatar name={participantName(person)} url={person.avatarUrl} /></span></td>
+                      <td><span className="directory-photo"><Avatar name={participantName(person)} url={person.avatarUrl} /></span></td>
                       <th scope="row">{participantName(person)}<small className="flight-recap-identity">{person.email}</small></th>
                       <td>
                         {person.status === "pending"
