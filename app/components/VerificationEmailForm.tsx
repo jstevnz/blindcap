@@ -28,7 +28,7 @@ export default function VerificationEmailForm() {
       <label>Email address
         <input name="email" type="email" autoComplete="email" maxLength={254} required />
       </label>
-      <button type="submit" disabled={busy}>{busy ? "Requesting…" : "Request another email link"}</button>
+      <button type="submit" disabled={busy}>{busy ? "Requesting…" : "Request a new verification link"}</button>
       {notice && <p role="status">{notice}</p>}
       {error && <p className="error" role="alert">{error}</p>}
     </form>
