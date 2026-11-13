@@ -24,6 +24,7 @@ export async function POST(req: Request) {
           "enroll",
           "pending-members",
           "review-member",
+          "resend-verification",
           "invitations",
           "recover",
           "email-login",

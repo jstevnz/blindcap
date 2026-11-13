@@ -71,6 +71,20 @@ export default function Members() {
       setBusy(false);
     }
   }
+  async function resendVerification(applicant: Applicant) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await request("/api/community", { operation: "resend-verification", userId: applicant.id });
+      setNotice(`Verification email sent to ${applicant.email}.`);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <main className="narrow">
       <p className="eyebrow">COMMUNITY OWNER</p>
@@ -137,6 +151,11 @@ export default function Members() {
                 Signed up {new Date(p.created_at).toLocaleString()}
               </p>
               <div className="actions">
+                {p.status === "pending" && !p.verified && (
+                  <button type="button" className="secondary" disabled={busy} onClick={() => resendVerification(p)}>
+                    Resend verification email
+                  </button>
+                )}
                 <button
                   disabled={busy || !p.verified || p.status !== "pending"}
                   onClick={() => review(p, "approve")}

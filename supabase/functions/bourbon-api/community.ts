@@ -429,6 +429,30 @@ export async function communityAction(
     throw new Error(
       "Only the community owner can invite new community members.",
     );
+  if (op === "resend-verification") {
+    if (typeof input.userId !== "string") throw new Error("Choose a pending signup.");
+    const applicant = await getProfile(db, input.userId);
+    if (applicant?.status !== "pending") throw new Error("This signup is no longer pending.");
+    const { data, error } = await db.auth.admin.getUserById(applicant.id);
+    if (error || data.user?.email?.toLowerCase() !== applicant.email || data.user.email_confirmed_at) {
+      throw new Error("This signup cannot be resent. Refresh Signup reviews to check its status.");
+    }
+    await rate(db, "recovery-email:" + applicant.email, 2, 300);
+    await rate(db, "verification-owner:" + a.id, 15, 3600);
+    const { data: link, error: linkError } = await db.auth.admin.generateLink({
+      type: "magiclink",
+      email: applicant.email,
+    });
+    const token = link?.properties?.hashed_token;
+    if (linkError || !token) throw new Error("Unable to create a new verification link.");
+    await services.deliver(
+      applicant.email,
+      "Verify your Blindcap email",
+      `Open this private link to verify your email and sign in:\nhttps://blindcap.net/account/confirm#token_hash=${token}&type=email\n\nYour membership still needs administrator approval.`,
+      applicant.id + ":verify:" + token,
+    );
+    return { sent: true };
+  }
   if (op === "participant-directory") {
     const participants = [];
     const pageSize = 200;
