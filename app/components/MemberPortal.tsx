@@ -120,7 +120,7 @@ export default function MemberPortal({
     <div className="member-portal">
       <header className="portal-header">
         <LoadingLink href="/" aria-label="BlindCap home">
-          <Image src="/brand/blindcap-wordmark.png" width={165} height={30} alt="BlindCap" />
+          <Image src="/brand/blindcap-wordmark-print.svg" width={165} height={30} alt="BlindCap" />
         </LoadingLink>
         <nav aria-label="Member portal">
           <LoadingLink href="/" aria-current="page">Home</LoadingLink>

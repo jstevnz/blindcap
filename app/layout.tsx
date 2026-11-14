@@ -16,7 +16,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <header className="masthead">
           <LoadingLink href="/" aria-label="Blindcap home">
             <Image
-              src="/brand/blindcap-wordmark.png"
+              src="/brand/blindcap-wordmark-print.svg"
               alt="Blindcap"
               width={660}
               height={120}
