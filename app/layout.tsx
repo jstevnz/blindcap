@@ -29,7 +29,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <a href="/#how-it-works">How it works</a>
             <a href="/#play-a-round">Play a round</a>
             <a href="/#questions">Questions</a>
-            <a href="/#sign-in">Sign in</a>
+            <a href="/#sign-in">Sign up / Sign in</a>
           </nav>
         </header>
         {children}
