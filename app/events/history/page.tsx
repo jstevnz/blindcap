@@ -5,7 +5,7 @@ export default function HistoryAndAwards() {
     <main className="narrow">
       <div className="row-between">
         <h1>My history & awards.</h1>
-        <a href="/events">← Events</a>
+        <a href="/">← Home</a>
       </div>
       <p>Your participated events, submitted bottles, revealed results and awards.</p>
       <TastingHistory />
