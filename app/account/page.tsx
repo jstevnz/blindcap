@@ -50,11 +50,18 @@ export default function Account() {
       setBusy(false);
     }
   }
+  async function logout() {
+    await save(async () => {
+      const { error } = await browser().auth.signOut();
+      if (error) throw error;
+      window.location.replace("/");
+    });
+  }
   return (
     <main className="narrow">
       <p className="eyebrow">YOUR BLINDCAP ACCOUNT</p>
       <div className="row-between"><h1>My Profile and Password.</h1><a href="/">← Home</a></div>
-      <nav className="actions section-navigation" aria-label="Profile sections"><a href="#profile-details">My details</a><a href="#password">Password</a><a href="#tasting-history">My Events & awards</a></nav>
+      <nav className="actions section-navigation" aria-label="Profile sections"><a href="#profile-details">My details</a><a href="#password">Password</a><a href="#tasting-history">My Events & awards</a><button type="button" className="text-button" disabled={busy} onClick={logout}>{busy ? "Please wait…" : "Logout"}</button></nav>
       {p && (
         <>
           {p.status === "pending" && (
