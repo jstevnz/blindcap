@@ -36,6 +36,10 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
+    if (input.action === "health") {
+      const { error } = await db.from("bourbon_events").select("id").limit(1);
+      return json({ ok: !error }, error ? 503 : 200);
+    }
     if (
       input.action === "community" &&
       [
