@@ -867,3 +867,47 @@ test("the participant directory rejects regular members", async () => {
     /Only the community owner/,
   );
 });
+
+test("only the site owner can view and edit directory profiles", async () => {
+  const f = fixture();
+  for (const operation of ["participant-profile", "participant-profile-update"]) {
+    await assert.rejects(
+      communityAction({ operation, userId: owner.id }, f.db, member, req()),
+      /Only the community owner/,
+    );
+  }
+  const result = await communityAction(
+    { operation: "participant-profile", userId: member.id }, f.db, owner, req(),
+  ) as { profile: Record<string, unknown>; version: string };
+  assert.equal(result.profile.email, member.email);
+  assert.equal(result.profile.id, member.id);
+  assert.equal("username" in result.profile, false);
+  assert.equal("role" in result.profile, false);
+  assert.match(result.version, /^[a-f0-9]{64}$/);
+});
+
+test("owner profile edits preserve identity and privileges and reject stale edits", async () => {
+  const f = fixture();
+  f.tables.bourbon_profiles.find(row => row.id === member.id)!.status = "pending";
+  const initial = await communityAction(
+    { operation: "participant-profile", userId: member.id }, f.db, owner, req(),
+  ) as { version: string };
+  const input = {
+    operation: "participant-profile-update", userId: member.id, version: initial.version,
+    firstName: "Updated", lastName: "Member", displayName: "Updated member",
+    phone: "+1 555 123 4567", location: "Yorktown", bio: "Rye", discoverable: false,
+    email: "different@example.com", username: "different@example.com", role: "owner", status: "active",
+  };
+  await communityAction(input, f.db, owner, req());
+  const profile = f.tables.bourbon_profiles.find(row => row.id === member.id)!;
+  assert.equal(profile.full_name, "Updated Member");
+  assert.equal(profile.email, member.email);
+  assert.equal(profile.username, "member");
+  assert.equal(profile.role, "member");
+  assert.equal(profile.status, "pending");
+  assert.equal(profile.discoverable, false);
+  await assert.rejects(communityAction(input, f.db, owner, req()), /profile changed/);
+  await assert.rejects(communityAction(
+    { ...input, userId: "bad-id" }, f.db, owner, req(),
+  ), /Choose a participant/);
+});

@@ -94,7 +94,7 @@ export default function ParticipantDirectory() {
                   {rows.map((person) => (
                     <tr key={person.id}>
                       <td><span className="directory-photo"><Avatar name={participantName(person)} url={person.avatarUrl} /></span></td>
-                      <th scope="row">{participantName(person)}<small className="flight-recap-identity">{person.email}</small></th>
+                      <th scope="row"><LoadingLink href={`/members/directory/${person.id}`}>{participantName(person)}</LoadingLink><small className="flight-recap-identity">{person.email}</small></th>
                       <td>
                         {person.status === "pending"
                           ? <LoadingLink href={`/members?review=${encodeURIComponent(person.id)}#review-${encodeURIComponent(person.id)}`}>Pending approval</LoadingLink>

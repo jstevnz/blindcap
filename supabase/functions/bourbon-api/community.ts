@@ -453,6 +453,45 @@ export async function communityAction(
     );
     return { sent: true };
   }
+  if (op === "participant-profile" || op === "participant-profile-update") {
+    if (typeof input.userId !== "string" || !/^[0-9a-f-]{36}$/i.test(input.userId))
+      throw new Error("Choose a participant.");
+    let target = await getProfile(db, input.userId);
+    if (!target) throw new Error("This participant profile is no longer available.");
+    const version = hash(JSON.stringify(target));
+    if (op === "participant-profile-update") {
+      if (input.version !== version)
+        throw new Error("This profile changed. Reload it before saving your edits.");
+      const fields = { ...profileFields(input), ...privateProfileFields(input) };
+      let update = db.from("bourbon_profiles").update(fields).eq("id", target.id);
+      for (const key of Object.keys(fields)) {
+        const value = (target as unknown as Record<string, unknown>)[key];
+        update = value === null || value === undefined
+          ? update.is(key, null)
+          : update.eq(key, typeof value === "object" ? JSON.stringify(value) : value);
+      }
+      const { data: saved, error } = await update.select("id").maybeSingle();
+      if (error) throw new Error("Unable to save this participant profile.");
+      if (!saved) throw new Error("This profile changed. Reload it before saving your edits.");
+      target = await getProfile(db, input.userId);
+      if (!target) throw new Error("This participant profile is no longer available.");
+    }
+    return {
+      profile: {
+        ...publicProfile(target),
+        avatarUrl: await avatarUrl(db, target.avatar_path),
+        email: target.email,
+        firstName: target.first_name ?? (target.full_name ?? "").trim().split(/\s+/)[0] ?? "",
+        lastName: target.last_name ?? (target.full_name ?? "").trim().split(/\s+/).slice(1).join(" "),
+        phone: target.phone ?? "",
+        location: target.location ?? "",
+        mailingAddress: target.mailing_address ?? {},
+        discoverable: target.discoverable,
+        status: target.status,
+      },
+      version: hash(JSON.stringify(target)),
+    };
+  }
   if (op === "participant-directory") {
     const participants = [];
     const pageSize = 200;
